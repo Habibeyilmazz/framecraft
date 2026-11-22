@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CODE_THEMES, DETECT_SAMPLE, highlight, htmlToLines, parseLineRanges } from '../src/code';
+import { CODE_THEMES, DETECT_SAMPLE, highlight, htmlToLines, MAX_HIGHLIGHT_LINE, parseLineRanges } from '../src/code';
 import { defaultDesign } from '../src/design';
 
 describe('parseLineRanges', () => {
@@ -73,6 +73,18 @@ describe('highlight', () => {
     const out = highlight(src, 'auto');
     expect(out.lang).toBe('plaintext');
     expect(out.lines.map((l) => l.map((t) => t.text).join('')).join('\n')).toBe(src.trimEnd());
+  });
+  it('leaves text with a very long line plain instead of hanging on it', () => {
+    // a share link can carry one 20 000-character line in a chosen language; highlight.js took 2.4 s on it
+    const src = 'int a = 1;\n' + '$'.repeat(20_000);
+    const start = performance.now();
+    const out = highlight(src, 'java');
+    expect(performance.now() - start).toBeLessThan(500);
+    expect(out.lang).toBe('java');
+    expect(out.lines).toEqual([[{ text: 'int a = 1;', role: 'fg' }], [{ text: '$'.repeat(20_000), role: 'fg' }]]);
+    expect(highlight('1e'.repeat(5000), 'auto').lang).toBe('plaintext');
+    // a line at the limit is still coloured
+    expect(highlight('int a = 1; // ' + 'x'.repeat(MAX_HIGHLIGHT_LINE - 14), 'java').lines[0].some((t) => t.role !== 'fg')).toBe(true);
   });
   it('does not treat inherited object keys as languages', () => {
     for (const lang of ['constructor', 'toString', '__proto__']) expect(() => highlight('let a = 1;', lang)).not.toThrow();
