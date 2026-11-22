@@ -3,6 +3,29 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Added
+
+- The Pointer tool drags any annotation, not just the newest. The names in the Annotations list are buttons that
+  select which annotation the arrow keys and Delete act on; the selected one has an outline in the list.
+- CI runs the end-to-end tests in Firefox and WebKit as well as Chromium (`ALL_BROWSERS=1`).
+
+### Fixed
+
+- On phone-width screens the annotation toolbar squashed its colour swatches to slivers that overlapped the tools;
+  it now wraps onto extra rows.
+- Delete on the preview removes the selected annotation instead of always the newest.
+- End-to-end tests read the preview only after it has redrawn (they were flaky in WebKit), and no longer assume a
+  1x screen.
+
+### Notes for the next person
+
+- Round 1 ("first-run" review): fresh clone, `npm install`, `npm run dev`, build, unit and e2e tests all worked as the
+  README says. `dist/` was served from a sub-folder (as GitHub Pages would) and loaded fonts and exported SVG fine.
+- Still open: Safari and Firefox are covered only by Playwright's engines in CI, not by hand; no SVG export for
+  screenshot mode; the Pages workflow has never been run (enabling Pages is the owner's call).
+
 ## [0.1.0] - 2026-11-22
 
 ### Fixed (after a second-opinion review)

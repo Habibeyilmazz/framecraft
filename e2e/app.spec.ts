@@ -281,6 +281,8 @@ test('the pointer drags any annotation, and the list picks which one the keyboar
   await page.mouse.up();
   await page.getByRole('radio', { name: 'Step', exact: true }).check();
   await page.mouse.click(...at(0.8, 0.2));
+  // the newest annotation is the selected one
+  await expect(page.getByRole('button', { name: 'Step 1', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await drawn(page);
   expect(await red(0.2, 0.35)).toBeGreaterThan(5);
 

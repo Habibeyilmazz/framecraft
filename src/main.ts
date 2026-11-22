@@ -296,6 +296,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (p[0] < 0 || p[0] > 1 || p[1] < 0 || p[1] > 1) return;
   const [x, y] = p;
   const base: Note = { t, x, y, x2: x, y2: y, w: 0, h: 0, n: 1, c: noteColor };
+  selected = base;
   if (t === 'step') {
     base.n = design.notes.filter((n) => n.t === 'step').length + 1;
     commit(() => design.notes.push(base));
@@ -303,7 +304,6 @@ canvas.addEventListener('pointerdown', (e) => {
   }
   draft = { note: base, ox: x, oy: y };
   design.notes.push(base);
-  selected = base;
   canvas.setPointerCapture(e.pointerId);
   e.preventDefault();
 });
