@@ -1,0 +1,34 @@
+name: Bug report
+description: Something in framecraft does not work as described.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Please do not attach screenshots that contain secrets or personal data. A share link carries your code
+        snippet, so check it before pasting. Security problems go through SECURITY.md, not this form.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: "1. Switch to Screenshot\n2. Drop a PNG\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected, and what happened instead
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and operating system
+      placeholder: Firefox 140 on Windows 11
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Share link (optional)
+      description: Copy link puts the whole design in the URL. It never contains your image.

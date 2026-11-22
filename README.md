@@ -8,6 +8,10 @@ Everything happens in your browser tab: images are never uploaded, and there is 
 The image above was made with framecraft: it is framecraft's own screenshot, put in a browser frame,
 tilted and exported at 2x by [`scripts/readme-images.mjs`](scripts/readme-images.mjs), which drives the real app.
 
+<p align="center"><img src="docs/demo.gif" alt="A 16-second recording of framecraft: a screenshot is dropped in, a deploy key is covered, a box, an arrow, a text label and two numbered steps are added, the size is set to GitHub social preview, the card is tilted and a PNG is downloaded" width="100%"></p>
+
+The recording above is the real app, driven by [`scripts/demo-gif.mjs`](scripts/demo-gif.mjs) (Playwright plus ffmpeg).
+
 ## Quickstart
 
 Needs Node.js 22 or newer.
@@ -118,6 +122,24 @@ A manual GitHub Pages workflow is included (`.github/workflows/pages.yml`). To u
 in the repository settings, then run the workflow from the Actions tab. It has not been run on this repository yet;
 the built `dist/` has been checked served from a sub-folder, the way Pages serves a project site.
 
+## When to use something else
+
+framecraft does two jobs, framing screenshots and making code cards, with one set of backgrounds and sizes, in a
+static page you can host yourself. Other tools go deeper on one of those jobs:
+
+- **[Carbon](https://github.com/carbon-app/carbon)** and **[ray.so](https://ray.so)** make code images only, with
+  far more themes and fonts than framecraft's seven themes and one font. Pick them if code cards are all you need.
+- **[freeze](https://github.com/charmbracelet/freeze)** and **[silicon](https://github.com/Aloxaf/silicon)** render code
+  images from the command line, which suits scripts and CI. framecraft has no CLI.
+- **[Shots](https://shots.so)** offers many more device mockups. framecraft has four frames
+  (none, browser, macOS window, phone) and a two-axis tilt.
+- **CleanShot X** and **Xnapper** are paid macOS apps that capture, annotate and frame in one step. framecraft starts
+  from an image you already have and runs in a browser tab.
+
+Reasons to pick framecraft: annotations and redaction (blur, pixelate and a solid cover that clears the covered
+pixels before export) next to the framing, a share link that carries the whole look, no account, no upload, and MIT
+source you can run or host yourself.
+
 ## Roadmap
 
 Not built yet:
@@ -127,6 +149,12 @@ Not built yet:
 - Custom output sizes and a custom gradient editor.
 - More frames (iPad, Android, Windows window) and line wrapping for long code lines.
 - Diff-style added/removed line markers in code mode.
+
+## Contributing
+
+Bug reports and small, focused pull requests are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains the setup,
+the tests a change needs and the house rules (synthetic test data only, no new runtime dependency without a reason).
+To report a security problem, such as a redaction that leaves recoverable pixels, see [SECURITY.md](SECURITY.md).
 
 ## License
 

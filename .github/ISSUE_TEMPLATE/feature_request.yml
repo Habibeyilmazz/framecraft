@@ -1,0 +1,18 @@
+name: Feature request
+description: Suggest something framecraft should do.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Please check the Roadmap in the README first; it lists what is known to be missing.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What are you trying to make?
+      description: The image you wanted and what got in the way. A sketch or a link to a similar image helps.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help

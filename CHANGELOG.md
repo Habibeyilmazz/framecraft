@@ -5,6 +5,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Round 6 ("launch"): a 16-second demo GIF near the top of the README (`docs/demo.gif`, 960 px, about 4 MB),
+  recorded from the real app by `scripts/demo-gif.mjs` (Playwright video with a drawn pointer, encoded by ffmpeg).
+- README sections "When to use something else" (Carbon, ray.so, freeze, silicon, Shots, CleanShot X, Xnapper, and
+  what framecraft does that they do not) and "Contributing".
+- `CONTRIBUTING.md` (setup, checks, house rules, how the README images are made), `SECURITY.md` (scope and how to
+  report), and bug / feature issue forms. Repository topics `annotation`, `redaction` and `mockup`.
+- An e2e test for the step-badge limit: 99 badges by keyboard, then the 100th refused from the keyboard and the
+  mouse with "Steps go up to 99." Checked to fail with the guard removed.
+
 ### Fixed
 
 - Round 5 ("tests", a reliability pass). Each bug below was reproduced first, then got a failing test, then the fix:
@@ -105,6 +116,16 @@ All notable changes to this project are documented here. The format follows
 
 ### Notes for the next person
 
+- Round 6 ("launch"): re-checked the reported gaps. The 99-step refusal had no test (added). axe-core 4.10 (WCAG 2.2
+  AA plus best practices) was run against the built page at 1440 and 390 px, light and dark, in code mode and in
+  screenshot mode with a label being edited: 0 violations. axe could not decide contrast for `#readout` and the
+  snippet box (it cannot see through the grid background); measured by hand, both are over 6:1. axe is not part of
+  the test suite (it would be a new dev dependency); run it the same way after markup changes. Label recolouring is
+  still a roadmap item, not a bug. The "Temporary: log ..." commits stay in history: removing them would need a
+  force-push. Private vulnerability reporting is off (turning it on is a repository setting, left to the owner), so
+  `SECURITY.md` asks for a contact request issue instead. `docs/hero.png` is 2560 x 1280, so it can be uploaded as
+  the repository's social preview image (Settings, by hand; there is no API for it). `assets/logo.png` is not used
+  anywhere. Codex was out of quota this round, so there was no second-opinion review.
 - Round 5 ("tests"): tried to break the app with odd input. Checked and found fine, no change: empty, whitespace,
   control-character, RTL, emoji and 20 000-character snippets; junk "Highlight lines"; share links whose JSON is
   `null`, a string, an array or wrongly typed fields; malformed templates in localStorage; 1x1, 12000x1, 1x4000 and
