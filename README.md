@@ -25,17 +25,22 @@ npm run dev        # then open http://localhost:4210
 
 **Screenshot mode**
 
-![Screenshot mode with a browser frame, a box, an arrow, two numbered steps and a deploy key hidden under a solid cover](docs/screenshots/screenshot-mode.png)
+![Screenshot mode with a browser frame, a box, an arrow, a text label, two numbered steps and a deploy key hidden under a solid cover](docs/screenshots/screenshot-mode.png)
 
 - Drop an image on the page, paste it with Ctrl+V / ⌘V, or pick a file (PNG, JPEG, WebP, GIF, AVIF).
 - Frames: none, browser window (with an editable address), macOS window (with a title), phone. Light or dark windows.
-- Annotations: arrows, boxes, numbered step badges, and three redactions: blur, pixelate and cover. Blur and pixelate
+- Annotations: arrows, boxes, numbered step badges, text labels, and three redactions: blur, pixelate and cover. Blur and pixelate
   rebuild the region from a tiny downscaled copy (cells of at least 8 image pixels) and clear the original pixels
   first, so the exported file does not contain what you covered, and overlapping redactions never bring covered
   pixels back. Cover paints the region one solid colour.
 - **For passwords, keys and tokens use Cover.** Blurred or pixelated text keeps a coarse shape, and tools such as
   Depix have recovered short pixelated strings in a known font. A solid fill leaves nothing to reconstruct.
   Every annotation is listed in the sidebar with a Remove button; Ctrl+Z / ⌘Z undoes the last one.
+- Text labels: pick Text and click the image to place a label, or drag to set its size. Its words are selected in a
+  box next to the toolbar, so you can type straight away; Enter takes you back to the image. Selecting a label later
+  shows the box again. A label is one line of up to 80 characters on a pill in the annotation colour, with black or
+  white text, whichever contrasts more. Editing the words keeps the font size and grows or shrinks the pill;
+  resizing the pill scales the text to fit.
 - With the Pointer tool, drag any annotation to move it (grab a box by its outline, a redaction anywhere inside).
   The selected annotation shows a round handle (an arrow's tip, a box's bottom-right corner): drag it to resize.
 - Keyboard: Tab to the preview, pick a tool, press Enter to add an annotation, arrow keys to move it (Shift for bigger
@@ -111,7 +116,7 @@ the built `dist/` has been checked served from a sub-folder, the way Pages serve
 
 Not built yet:
 
-- Text labels as an annotation.
+- Recolouring an annotation after it is placed (pick the colour first), and multi-line text labels.
 - SVG export for screenshot mode.
 - Custom output sizes and a custom gradient editor.
 - More frames (iPad, Android, Windows window) and line wrapping for long code lines.

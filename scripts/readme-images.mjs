@@ -37,6 +37,10 @@ await drag('Cover', [0.72, 0.755], [0.93, 0.81]); // a solid cover, as the READM
 await app.getByRole('radio', { name: 'Colour #ff4d3d' }).check();
 await drag('Box', [0.24, 0.235], [0.468, 0.485]);
 await drag('Arrow', [0.62, 0.13], [0.48, 0.26]);
+await app.getByRole('radio', { name: 'Text', exact: true }).check();
+await app.mouse.click(...at(0.625, 0.13));
+await app.keyboard.type('Builds are up 12%');
+await app.keyboard.press('Enter');
 await app.getByRole('radio', { name: 'Step', exact: true }).check();
 await app.mouse.click(...at(0.243, 0.238));
 await app.mouse.click(...at(0.715, 0.75));

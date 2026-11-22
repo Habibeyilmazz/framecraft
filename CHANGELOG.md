@@ -5,6 +5,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Round 4 ("feature"): **text labels**, the first item on the roadmap and the one thing a launch or README image
+  kept needing (step badges and arrows had no words to point at). The Text tool places a one-line label on a pill
+  in the annotation colour: click for the default size, drag to set it. The label's words show in a box beside the
+  toolbar, selected, so typing replaces "Label"; Enter or Escape returns to the preview. Editing keeps the font size
+  and resizes the pill; dragging the handle resizes the pill and the text fits it. Labels move, resize, delete and
+  undo like every other annotation, by mouse or keyboard, and are listed by their words. The share link sanitizer
+  caps the words at 80 characters and turns control characters into spaces. Pure sizing math is `labelFont` /
+  `labelSize` in `src/layout.ts` (unit-tested); one e2e test covers click, type, widen, keyboard move, keyboard
+  placement and delete. The README screenshot now shows a label (made by `scripts/readme-images.mjs`).
+
 ### Security
 
 - Round 3 ("security" review). New **Cover** redaction: a solid, opaque fill baked into the redacted copy of the
@@ -50,6 +62,13 @@ All notable changes to this project are documented here. The format follows
   1x screen.
 
 ### Notes for the next person
+
+- Round 4 ("feature"): picked text labels after using the app as a newcomer: every other gap (custom sizes, SVG for
+  screenshots, more frames) has a workaround, but there was no way to put a word on a screenshot. Not built, on
+  purpose: multi-line labels, a font or size picker, and recolouring a placed annotation (the colour swatches only
+  affect the next one; true for all annotation kinds). Placing a screenshot still clears all annotations, so labels
+  in a share link do not survive loading an image (unchanged behaviour). The previous round's gaps were re-checked:
+  none is a bug (decode bombs are still left to the browser; Firefox/WebKit still only on CI).
 
 - Round 3 ("security" review): the security-review skill could not run (it needs the session to start inside a git
   repo), so the review was done by hand, plus one Codex pass. Checked and found fine: share-link decoding (base64url check, 200 kB input and 1 MB
