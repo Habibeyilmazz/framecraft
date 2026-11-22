@@ -101,6 +101,10 @@
             <label class="field"><span>Highlight lines</span><input type="text" data-bind="code.highlight" placeholder="e.g. 2, 4-6" maxlength="200" spellcheck="false" /></label>
             <label class="field"><span>File name</span><input type="text" data-bind="code.title" maxlength="120" spellcheck="false" /></label>
           </div>
+          <div class="pair">
+            <label class="field"><span>Added lines</span><input type="text" data-bind="code.added" placeholder="e.g. 3" maxlength="200" spellcheck="false" /></label>
+            <label class="field"><span>Removed lines</span><input type="text" data-bind="code.removed" placeholder="e.g. 2" maxlength="200" spellcheck="false" /></label>
+          </div>
           <div class="field range"><span><label for="r-code-fontSize">Font size</label><output for="r-code-fontSize" data-out="code.fontSize"></output></span><input id="r-code-fontSize" type="range" min="10" max="32" step="1" data-bind="code.fontSize" /></div>
           <div class="checks">
             <label class="check"><input type="checkbox" data-bind="code.lineNumbers" /> Line numbers</label>

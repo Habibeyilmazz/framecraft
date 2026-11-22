@@ -33,7 +33,8 @@ npm run dev        # then open http://localhost:4210
 
 - Drop an image on the page, paste it with Ctrl+V / ⌘V, or pick a file (PNG, JPEG, WebP, GIF, AVIF, SVG). An SVG
   is drawn 2000 px on its long side, so a diagram stays sharp on a 2x export; its scripts never run and it loads
-  nothing from the network.
+  nothing from the network. Safari's engine cannot export an SVG with HTML inside (`foreignObject`), so there it is
+  refused with a message; use a PNG of it instead.
 - Frames: none, browser window (with an editable address), macOS window (with a title), phone. Light or dark windows.
 - Crop: pick Crop and the whole image shows with the crop outlined; drag over the part to keep. From the keyboard,
   arrow keys move the crop, Alt+arrow keys resize it and Delete shows the whole image again; so does
@@ -70,6 +71,11 @@ npm run dev        # then open http://localhost:4210
 - Syntax highlighting for 24 languages with [highlight.js](https://highlightjs.org/), including automatic language detection (from the first 4000 characters, so a long paste stays quick). Text with a line over 1000 characters, such as minified code, stays uncoloured: highlighting slows down sharply on very long lines.
 - Themes: Framecraft, One Dark, Dracula, Nord, GitHub Dark, GitHub Light, Solarized Light (palettes follow the published schemes they are named after).
 - Line numbers, highlighted lines (`2, 4-6`), file name in the window bar, font size.
+- Added and removed lines, like a diff, to show a change: list them (`4`, `3`) and they get a green or red tint, an edge
+  and a `+` or `−` sign beside the line number, in the theme's own diff colours. The code keeps its syntax colours.
+  A line in more than one list shows as removed, then added, then highlighted.
+
+<img src="docs/diff-card.png" alt="A TypeScript function in GitHub Dark with line 3 marked removed in red and line 4 marked added in green" width="560">
 
 **Both modes**
 
@@ -167,7 +173,6 @@ Not built yet:
 - SVG export for screenshot mode.
 - A custom gradient editor.
 - More frames (iPad, Android, Windows window) and line wrapping for long code lines.
-- Diff-style added/removed line markers in code mode.
 
 ## Contributing
 

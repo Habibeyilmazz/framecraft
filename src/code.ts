@@ -167,6 +167,23 @@ export function highlight(code: string, lang: string): Highlighted {
   return plain('plaintext');
 }
 
+export type LineMark = 'hl' | 'add' | 'del';
+
+/** Each marked line (1-based) from the highlight, added and removed specs. A line in two lists: removed wins, then added. */
+export function lineMarks(c: { highlight: string; added: string; removed: string }, maxLine: number): Map<number, LineMark> {
+  const out = new Map<number, LineMark>();
+  for (const [spec, mark] of [[c.highlight, 'hl'], [c.added, 'add'], [c.removed, 'del']] as const) for (const i of parseLineRanges(spec, maxLine)) out.set(i, mark);
+  return out;
+}
+
+/** Row tint, left edge colour and gutter sign for a marked line. */
+export function markStyle(th: Theme, mark: LineMark): { fill: string; edge: string; sign: string } {
+  if (mark === 'hl') return { fill: th.hl, edge: th.colors.keyword, sign: '' };
+  const c = th.colors[mark];
+  const n = parseInt(c.slice(1), 16);
+  return { fill: `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${th.dark ? 0.16 : 0.12})`, edge: c, sign: mark === 'add' ? '+' : '\u2212' };
+}
+
 /** Parse "3, 5-7" into a set of 1-based line numbers. Junk is ignored; ranges are capped to maxLine. */
 export function parseLineRanges(spec: string, maxLine: number): Set<number> {
   const out = new Set<number>();

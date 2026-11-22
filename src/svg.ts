@@ -1,6 +1,6 @@
 import monoFontUrl from '@fontsource/jetbrains-mono/files/jetbrains-mono-latin-400-normal.woff2?url';
 import sansFontUrl from '@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-normal.woff2?url';
-import { CODE_THEMES, parseLineRanges, type Highlighted } from './code';
+import { CODE_THEMES, lineMarks, markStyle, type Highlighted } from './code';
 import type { Design } from './design';
 import { layoutCard, layoutScene, type CodeMetrics } from './layout';
 import { GRADIENTS, gradientLine, MESHES, meshBlobs, SHADOW_PRESETS } from './presets';
@@ -85,16 +85,19 @@ export function buildCodeSvg(d: Design, hl: Highlighted, inp: SvgInputs): string
         `<text x="${n(card.w / 2)}" y="${n(b / 2)}" text-anchor="middle" dominant-baseline="central" font-family="'Instrument Sans Variable', system-ui, sans-serif" font-weight="500" font-size="${n(b * 0.33)}" fill="${th.colors.comment}">${esc(d.code.title)}</text>`,
       );
   }
-  const marks = parseLineRanges(d.code.highlight, hl.lines.length);
+  const marks = lineMarks(d.code, hl.lines.length);
   const top = card.content.y + m.padY;
   const textX = m.padX + m.gutter;
   hl.lines.forEach((line, i) => {
     const y = top + i * m.lh;
     const mid = y + m.lh / 2;
-    const on = marks.has(i + 1);
-    if (on) {
-      inner.push(`<rect y="${n(y)}" width="${n(card.w)}" height="${m.lh}" fill="${th.hl}"/>`);
-      inner.push(`<rect y="${n(y)}" width="${n(Math.max(2, m.fs * 0.2))}" height="${m.lh}" fill="${th.colors.keyword}"/>`);
+    const mark = marks.get(i + 1);
+    const on = !!mark;
+    if (mark) {
+      const s = markStyle(th, mark);
+      inner.push(`<rect y="${n(y)}" width="${n(card.w)}" height="${m.lh}" fill="${s.fill}"/>`);
+      inner.push(`<rect y="${n(y)}" width="${n(Math.max(2, m.fs * 0.2))}" height="${m.lh}" fill="${s.edge}"/>`);
+      if (s.sign) inner.push(`<text x="${n(textX - m.fs * 0.85)}" y="${n(mid)}" text-anchor="middle" fill="${s.edge}">${s.sign}</text>`);
     }
     if (d.code.lineNumbers)
       inner.push(`<text x="${n(m.padX + m.gutter - m.fs * 1.6)}" y="${n(mid)}" text-anchor="end" fill="${on ? th.colors.fg : th.lineNo}">${i + 1}</text>`);

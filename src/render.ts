@@ -1,4 +1,4 @@
-import { CODE_THEMES, parseLineRanges, type Highlighted } from './code';
+import { CODE_THEMES, lineMarks, markStyle, type Highlighted } from './code';
 import { FULL_CROP, stepRadius, type Crop, type Design, type Note } from './design';
 import { codeMetrics, fitText, labelFont, layoutCard, layoutScene, shotDisplaySize, wholeImageBox, type Box, type CardLayout, type CodeMetrics, type Scene } from './layout';
 import { applyH, homography, invert3, projectCard, type Mat3, type ProjPt } from './perspective';
@@ -364,7 +364,7 @@ function drawShotCard(ctx: Ctx, d: Design, L: CardLayout, img: Img) {
 function drawCodeCard(ctx: Ctx, d: Design, L: CardLayout, hl: Highlighted) {
   const th = CODE_THEMES[d.code.theme];
   const m = codeLayout(d, hl);
-  const marks = parseLineRanges(d.code.highlight, hl.lines.length);
+  const marks = lineMarks(d.code, hl.lines.length);
   ctx.beginPath();
   roundRect(ctx, 0, 0, L.w, L.h, L.radius);
   ctx.clip();
@@ -387,14 +387,18 @@ function drawCodeCard(ctx: Ctx, d: Design, L: CardLayout, hl: Highlighted) {
   hl.lines.forEach((line, i) => {
     const y = top + i * m.lh;
     const mid = y + m.lh / 2;
-    const on = marks.has(i + 1);
-    if (on) {
-      ctx.fillStyle = th.hl;
-      ctx.fillRect(0, y, L.w, m.lh);
-      ctx.fillStyle = th.colors.keyword;
-      ctx.fillRect(0, y, Math.max(2, m.fs * 0.2), m.lh);
-    }
+    const mark = marks.get(i + 1);
+    const on = !!mark;
     ctx.font = `400 ${m.fs}px ${MONO}`;
+    if (mark) {
+      const s = markStyle(th, mark);
+      ctx.fillStyle = s.fill;
+      ctx.fillRect(0, y, L.w, m.lh);
+      ctx.fillStyle = s.edge;
+      ctx.fillRect(0, y, Math.max(2, m.fs * 0.2), m.lh);
+      ctx.textAlign = 'center';
+      if (s.sign) ctx.fillText(s.sign, m.padX + m.gutter - m.fs * 0.85, mid);
+    }
     if (d.code.lineNumbers) {
       ctx.textAlign = 'right';
       ctx.fillStyle = on ? th.colors.fg : th.lineNo;

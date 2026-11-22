@@ -137,6 +137,8 @@ describe('templates', () => {
     src.padding = 20;
     src.code.theme = 'nord';
     src.code.text = 'secret code';
+    src.code.added = '4';
+    src.code.removed = '5';
     src.notes.push({ t: 'step', x: 0.5, y: 0.5, x2: 0, y2: 0, w: 0, h: 0, n: 1, c: '#ff4d3d' });
     const t = JSON.parse(JSON.stringify(toTemplate(src)));
     expect(JSON.stringify(t)).not.toContain('secret code');
@@ -153,6 +155,7 @@ describe('templates', () => {
     expect(out.padding).toBe(20);
     expect(out.code.theme).toBe('nord');
     expect(out.code.text).toBe('mine');
+    expect([out.code.added, out.code.removed]).toEqual(['', '']); // line marks are content, like the text
     expect(out.mode).toBe('shot');
     expect(out.url).toBe('my.site');
   });

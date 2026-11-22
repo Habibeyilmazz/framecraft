@@ -53,4 +53,15 @@ describe('buildCodeSvg', () => {
     expect(on.match(/<rect y=/g)!.length).toBe(2);
     expect(off).not.toMatch(/<rect y=/);
   });
+
+  it('marks added and removed lines with a tint and a sign', () => {
+    const svg = build((d) => {
+      d.code.highlight = '';
+      d.code.added = '1';
+      d.code.removed = '2';
+    });
+    expect(svg.match(/<rect y=/g)!.length).toBe(4);
+    expect(svg).toMatch(/text-anchor="middle" fill="#[0-9a-f]{6}">\+<\/text>/);
+    expect(svg).toContain('>\u2212</text>');
+  });
 });

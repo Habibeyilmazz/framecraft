@@ -85,6 +85,27 @@ await code.waitForTimeout(300);
 await save(code, 'Download PNG', 'docs/code-card.png');
 await save(code, 'SVG', 'docs/code-card.svg');
 
+// 3b. a code card showing a change, with added and removed lines
+const diff = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+await diff.goto(url);
+await diff.getByLabel('Snippet').fill(`export function exportName(d: Design, ext: string) {
+  const { w, h } = outputSize(d);
+  return \`framecraft-\${w}x\${h}.\${ext}\`;
+  return \`framecraft-\${d.mode}-\${w}x\${h}@\${d.scale}x.\${ext}\`;
+}`);
+await diff.getByLabel('Language').selectOption('typescript');
+await diff.getByLabel('Highlight lines').fill('');
+await diff.getByLabel('Removed lines').fill('3');
+await diff.getByLabel('Added lines').fill('4');
+await diff.getByLabel('File name').fill('export.ts');
+await diff.getByLabel('Theme').selectOption('github-dark');
+await diff.getByRole('radio', { name: 'Gradient' }).check();
+await diff.getByRole('radio', { name: 'Dusk' }).check();
+await diff.locator('#r-bg-noise').fill('0');
+await diff.getByRole('radio', { name: '2x' }).check();
+await diff.waitForTimeout(300);
+await save(diff, 'Download PNG', 'docs/diff-card.png');
+
 // 4. the editor on a phone, with a box selected so its resize handle shows
 const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, colorScheme: 'dark' });
 await phone.goto(url);

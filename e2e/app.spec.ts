@@ -136,6 +136,27 @@ test('exports a standalone SVG for code', async ({ page }) => {
   expect(svg).toContain('exportImage');
 });
 
+test('added and removed lines show in the preview and the SVG, and travel in the link', async ({ page }) => {
+  await drawn(page);
+  const before = await page.locator('#preview').evaluate((c: HTMLCanvasElement) => c.toDataURL());
+  await page.getByRole('textbox', { name: 'Added lines' }).fill('9');
+  await page.getByRole('textbox', { name: 'Removed lines' }).fill('8');
+  await drawn(page);
+  expect(await page.locator('#preview').evaluate((c: HTMLCanvasElement) => c.toDataURL())).not.toBe(before);
+
+  const dl = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'SVG' }).click();
+  const svg = await readFile((await (await dl).path())!, 'utf8');
+  expect(svg).toMatch(/>\+<\/text>/);
+  expect(svg).toContain('>−</text>');
+
+  await page.waitForTimeout(400); // URL updates are debounced
+  const fresh = await page.context().newPage();
+  await fresh.goto(page.url());
+  await expect(fresh.getByRole('textbox', { name: 'Added lines' })).toHaveValue('9');
+  await expect(fresh.getByRole('textbox', { name: 'Removed lines' })).toHaveValue('8');
+});
+
 test('blocks SVG export while the card is tilted', async ({ page }) => {
   await page.getByLabel(/Turn sideways/).fill('12');
   await expect(page.getByRole('button', { name: 'SVG' })).toHaveAttribute('aria-disabled', 'true');

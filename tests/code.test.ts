@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CODE_THEMES, DETECT_SAMPLE, highlight, htmlToLines, MAX_HIGHLIGHT_LINE, parseLineRanges } from '../src/code';
+import { CODE_THEMES, DETECT_SAMPLE, highlight, htmlToLines, lineMarks, markStyle, MAX_HIGHLIGHT_LINE, parseLineRanges } from '../src/code';
 import { defaultDesign, MAX_CODE } from '../src/design';
 
 describe('parseLineRanges', () => {
@@ -14,6 +14,23 @@ describe('parseLineRanges', () => {
   });
   it('is empty for an empty spec', () => {
     expect(parseLineRanges('', 10).size).toBe(0);
+  });
+});
+
+describe('lineMarks', () => {
+  it('marks highlighted, added and removed lines; removed wins, then added', () => {
+    const m = lineMarks({ highlight: '1-4', added: '3-4', removed: '4, 9' }, 6);
+    expect([...m].sort(([a], [b]) => a - b)).toEqual([[1, 'hl'], [2, 'hl'], [3, 'add'], [4, 'del']]);
+  });
+  it('gives added and removed lines a tint of the theme colour, an edge and a sign', () => {
+    const th = CODE_THEMES['github-dark'];
+    expect(markStyle(th, 'add')).toEqual({ fill: 'rgba(126,231,135,0.16)', edge: '#7ee787', sign: '+' });
+    expect(markStyle(th, 'del').sign).toBe('\u2212');
+    expect(markStyle(CODE_THEMES['github-light'], 'add').fill).toBe('rgba(17,99,41,0.12)');
+    expect(markStyle(th, 'hl')).toEqual({ fill: th.hl, edge: th.colors.keyword, sign: '' });
+  });
+  it('every theme has hex add and del colours', () => {
+    for (const th of Object.values(CODE_THEMES)) for (const k of ['add', 'del'] as const) expect(th.colors[k]).toMatch(/^#[0-9a-f]{6}$/);
   });
 });
 

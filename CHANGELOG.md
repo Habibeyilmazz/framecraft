@@ -5,8 +5,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Round 15 ("feature-2"): **added and removed lines in code mode**, to show a change in a launch post or changelog
+  image (it was on the roadmap; code cards could only highlight lines). Two new fields, "Added lines" and "Removed
+  lines", take the same `2, 4-6` form as "Highlight lines". Marked lines get a tint of the theme's diff colour, an edge
+  and a `+` or `−` sign in the gutter, in the PNG and the SVG; syntax colours stay. Removed wins over added, added
+  over highlighted. One place decides this (`lineMarks` and `markStyle` in `src/code.ts`), used by `src/render.ts`
+  and `src/svg.ts`. The new `code.added` and `code.removed` design fields travel in the share link; templates leave
+  them out, like the snippet and its highlighted lines. Unit tests (marks, colours, SVG output, templates) and one e2e
+  test (preview changes, SVG has the signs, a fresh page from the link has the fields). README image
+  `docs/diff-card.png` made with framecraft by `scripts/readme-images.mjs`; the app screenshots were regenerated too,
+  since the sidebar has the new fields.
+
 ### Fixed
 
+- Round 15: **an SVG with HTML inside (`foreignObject`) could block every export in Safari** (round 14's reported
+  gap). Safari's engine treats such an SVG as cross-origin and taints the canvas it is drawn on, after which PNG
+  export, copying and pixelation fail. `decodeSvg` now reads one pixel back after drawing; if the canvas is tainted,
+  the file is refused with "This browser cannot export an SVG with HTML inside it". Chromium draws such SVGs cleanly
+  and keeps them. The e2e test accepts either outcome but never a loaded image that cannot export; WebKit runs it
+  only in CI (no WebKit locally), and Safari itself was not tried by hand.
 - Round 14 ("launch"): checked the two reported gaps that were bugs first, each with an e2e test seen to fail
   before the fix:
   - **SVG files were refused as a screenshot** (or a background image): `createImageBitmap` does not decode them.

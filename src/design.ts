@@ -54,6 +54,9 @@ export interface Design {
     fontSize: number;
     lineNumbers: boolean;
     highlight: string;
+    /** Lines shown as added or removed, like a diff: same "2, 4-6" form as highlight. */
+    added: string;
+    removed: string;
     title: string;
     bar: boolean;
   };
@@ -112,6 +115,8 @@ export function defaultDesign(): Design {
       fontSize: 15,
       lineNumbers: true,
       highlight: '5-7',
+      added: '',
+      removed: '',
       title: 'export.ts',
       bar: true,
     },
@@ -283,6 +288,8 @@ export function sanitize(input: unknown): Design {
       fontSize: int(code.fontSize, 10, 32, d.code.fontSize),
       lineNumbers: bool(code.lineNumbers, d.code.lineNumbers),
       highlight: str(code.highlight, 200, d.code.highlight),
+      added: str(code.added, 200, d.code.added),
+      removed: str(code.removed, 200, d.code.removed),
       title: str(code.title, 120, d.code.title),
       bar: bool(code.bar, d.code.bar),
     },
@@ -353,17 +360,17 @@ export async function decodeDesign(s: string): Promise<Design | null> {
 
 // ---- templates: the style without the content ----
 
-export type Template = Omit<Design, 'notes' | 'crop' | 'mode' | 'code'> & { code: Omit<Design['code'], 'text' | 'highlight' | 'title'> };
+export type Template = Omit<Design, 'notes' | 'crop' | 'mode' | 'code'> & { code: Omit<Design['code'], 'text' | 'highlight' | 'added' | 'removed' | 'title'> };
 
 export function toTemplate(d: Design): Template {
   const { notes: _n, crop: _c, mode: _m, code, ...rest } = d;
-  const { text: _t, highlight: _h, title: _ti, ...codeStyle } = code;
+  const { text: _t, highlight: _h, added: _a, removed: _r, title: _ti, ...codeStyle } = code;
   return { ...structuredClone(rest), code: { ...codeStyle } };
 }
 
 /** Apply a stored template's style over the current design, keeping its content. */
 export function applyTemplate(current: Design, t: unknown): Design {
   const o = obj(t);
-  const style = sanitize({ ...o, mode: current.mode, notes: current.notes, crop: current.crop, code: { ...obj(o.code), text: current.code.text, highlight: current.code.highlight, title: current.code.title } });
+  const style = sanitize({ ...o, mode: current.mode, notes: current.notes, crop: current.crop, code: { ...obj(o.code), text: current.code.text, highlight: current.code.highlight, added: current.code.added, removed: current.code.removed, title: current.code.title } });
   return { ...style, url: current.url, title: current.title };
 }
