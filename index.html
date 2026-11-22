@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>framecraft: screenshots and code into share-ready images</title>
+    <meta name="description" content="Frame screenshots and code snippets into polished PNG and SVG images for READMEs, launches and social posts. Runs entirely in your browser; nothing is uploaded." />
+    <meta name="theme-color" content="#2c5446" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+  </head>
+  <body>
+    <a class="skip" href="#inspector">Skip to settings</a>
+    <header class="top">
+      <div class="brand">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><rect x="3" y="5" width="18" height="15" rx="4" fill="none" stroke="currentColor" stroke-width="3"/><rect x="11" y="12" width="18" height="15" rx="4" fill="var(--panel)" stroke="currentColor" stroke-width="3"/><rect x="14.5" y="15.5" width="11" height="8" rx="1.8" fill="none" stroke="var(--accent)" stroke-width="2"/></svg>
+        <span class="wordmark">framecraft</span>
+      </div>
+      <fieldset class="seg mode" aria-label="What to frame">
+        <label><input type="radio" name="mode" value="shot" data-bind="mode" /><span>Screenshot</span></label>
+        <label><input type="radio" name="mode" value="code" data-bind="mode" /><span>Code</span></label>
+      </fieldset>
+      <div class="actions">
+        <button type="button" class="btn ghost" id="copy-link" title="Copy a link that reopens this design (images are not included)">Copy link</button>
+        <button type="button" class="btn ghost" id="copy-image">Copy image</button>
+        <fieldset class="seg scale" aria-label="Export scale">
+          <label><input type="radio" name="scale" value="1" data-bind="scale" /><span>1x</span></label>
+          <label><input type="radio" name="scale" value="2" data-bind="scale" /><span>2x</span></label>
+          <label><input type="radio" name="scale" value="3" data-bind="scale" /><span>3x</span></label>
+        </fieldset>
+        <button type="button" class="btn ghost" id="export-svg" data-show="mode:code">SVG</button>
+        <button type="button" class="btn primary" id="export-png">Download PNG</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="stage" id="stage" aria-label="Preview">
+        <div class="toolbar" id="tools" role="toolbar" aria-label="Annotation tools" data-show="mode:shot" hidden>
+          <fieldset class="tools" aria-label="Tool">
+            <label><input type="radio" name="tool" value="" checked /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3l10 6-4.5 1.2L8.6 15z"/></svg>Pointer</span></label>
+            <label><input type="radio" name="tool" value="arrow" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16L15 5M8 5h7v7"/></svg>Arrow</span></label>
+            <label><input type="radio" name="tool" value="box" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="5" width="13" height="10" rx="2"/></svg>Box</span></label>
+            <label><input type="radio" name="tool" value="blur" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" stroke-dasharray="2 2.4"/><circle cx="10" cy="10" r="2.5"/></svg>Blur</span></label>
+            <label><input type="radio" name="tool" value="pixel" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h4v4H4zM12 4h4v4h-4zM8 8h4v4H8zM4 12h4v4H4zM12 12h4v4h-4z"/></svg>Pixelate</span></label>
+            <label><input type="radio" name="tool" value="step" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M9 7.5l1.5-1v7"/></svg>Step</span></label>
+          </fieldset>
+          <fieldset class="swatches small" aria-label="Annotation colour" id="note-colors"></fieldset>
+          <button type="button" class="icon-btn" id="undo" aria-label="Undo last annotation" title="Undo last annotation (Ctrl+Z)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5L3 9l4 4M3 9h9a5 5 0 010 10h-2"/></svg></button>
+        </div>
+
+        <div class="canvas-wrap" id="canvas-wrap">
+          <canvas id="preview" role="img" aria-label="Preview of the image you are making"></canvas>
+          <div class="empty" id="empty" hidden>
+            <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="10" width="36" height="28" rx="5"/><path d="M6 31l10-9 9 8 6-5 11 9"/><circle cx="32" cy="19" r="3"/></svg>
+            <h2>Drop a screenshot here</h2>
+            <p>Or paste one with <kbd>Ctrl</kbd>+<kbd>V</kbd> (<kbd>⌘</kbd><kbd>V</kbd> on a Mac). It stays in this browser.</p>
+            <button type="button" class="btn primary" data-pick="shot">Choose image</button>
+          </div>
+          <div class="drop-hint" id="drop-hint" hidden>Drop to use this image</div>
+        </div>
+        <p class="readout" id="readout" aria-live="off"></p>
+      </section>
+
+      <aside class="inspector" id="inspector" aria-label="Settings" tabindex="-1">
+        <section class="group" data-show="mode:shot">
+          <h2>Screenshot</h2>
+          <div class="row">
+            <button type="button" class="btn ghost wide" data-pick="shot" id="replace-shot">Choose image</button>
+          </div>
+          <fieldset class="seg wide">
+            <legend>Frame</legend>
+            <label><input type="radio" name="frame" value="none" data-bind="frame" /><span>None</span></label>
+            <label><input type="radio" name="frame" value="browser" data-bind="frame" /><span>Browser</span></label>
+            <label><input type="radio" name="frame" value="mac" data-bind="frame" /><span>macOS</span></label>
+            <label><input type="radio" name="frame" value="phone" data-bind="frame" /><span>Phone</span></label>
+          </fieldset>
+          <label class="check" data-show="frame:browser,mac"><input type="checkbox" data-bind="dark" /> Dark window</label>
+          <label class="field" data-show="frame:browser"><span>Address</span><input type="text" data-bind="url" maxlength="200" spellcheck="false" /></label>
+          <label class="field" data-show="frame:mac"><span>Window title</span><input type="text" data-bind="title" maxlength="200" /></label>
+          <div class="notes-list" id="notes-list"></div>
+        </section>
+
+        <section class="group" data-show="mode:code">
+          <h2>Code</h2>
+          <label class="field"><span>Snippet</span><textarea data-bind="code.text" rows="9" wrap="off" spellcheck="false" maxlength="20000" autocapitalize="off" autocomplete="off"></textarea></label>
+          <div class="pair">
+            <label class="field"><span>Language</span><select data-bind="code.lang" id="lang"></select></label>
+            <label class="field"><span>Theme</span><select data-bind="code.theme" id="theme"></select></label>
+          </div>
+          <p class="hint" id="detected" aria-live="polite"></p>
+          <div class="pair">
+            <label class="field"><span>Highlight lines</span><input type="text" data-bind="code.highlight" placeholder="e.g. 2, 4-6" maxlength="200" spellcheck="false" /></label>
+            <label class="field"><span>File name</span><input type="text" data-bind="code.title" maxlength="120" spellcheck="false" /></label>
+          </div>
+          <label class="field range"><span>Font size <output data-out="code.fontSize"></output></span><input type="range" min="10" max="32" step="1" data-bind="code.fontSize" /></label>
+          <div class="checks">
+            <label class="check"><input type="checkbox" data-bind="code.lineNumbers" /> Line numbers</label>
+            <label class="check"><input type="checkbox" data-bind="code.bar" /> Window bar</label>
+          </div>
+        </section>
+
+        <section class="group">
+          <h2>Background</h2>
+          <fieldset class="seg wide">
+            <legend class="visually-hidden">Background type</legend>
+            <label><input type="radio" name="bg.kind" value="gradient" data-bind="bg.kind" /><span>Gradient</span></label>
+            <label><input type="radio" name="bg.kind" value="mesh" data-bind="bg.kind" /><span>Mesh</span></label>
+            <label><input type="radio" name="bg.kind" value="solid" data-bind="bg.kind" /><span>Solid</span></label>
+            <label><input type="radio" name="bg.kind" value="image" data-bind="bg.kind" /><span>Image</span></label>
+            <label><input type="radio" name="bg.kind" value="none" data-bind="bg.kind" /><span>None</span></label>
+          </fieldset>
+          <fieldset class="swatches" id="gradients" data-show="bg.kind:gradient"><legend class="visually-hidden">Gradient</legend></fieldset>
+          <fieldset class="swatches" id="meshes" data-show="bg.kind:mesh"><legend class="visually-hidden">Mesh colours</legend></fieldset>
+          <button type="button" class="btn ghost wide" id="shuffle" data-show="bg.kind:mesh">Shuffle mesh</button>
+          <label class="field color" data-show="bg.kind:solid,image"><span>Colour</span><input type="color" data-bind="bg.color" /></label>
+          <button type="button" class="btn ghost wide" data-pick="bg" data-show="bg.kind:image">Choose background image</button>
+          <label class="field range" data-show="bg.kind:gradient,mesh,solid,image"><span>Grain <output data-out="bg.noise" data-pct></output></span><input type="range" min="0" max="1" step="0.05" data-bind="bg.noise" /></label>
+        </section>
+
+        <section class="group">
+          <h2>Layout</h2>
+          <label class="field"><span>Size</span><select data-bind="size" id="size"></select></label>
+          <label class="field range"><span>Padding <output data-out="padding"></output></span><input type="range" min="0" max="240" step="4" data-bind="padding" /></label>
+          <label class="field range" data-show="frame:none,browser,mac|mode:code"><span>Corner radius <output data-out="radius"></output></span><input type="range" min="0" max="48" step="1" data-bind="radius" /></label>
+          <fieldset class="seg wide">
+            <legend>Shadow</legend>
+            <label><input type="radio" name="shadow" value="none" data-bind="shadow" /><span>None</span></label>
+            <label><input type="radio" name="shadow" value="soft" data-bind="shadow" /><span>Soft</span></label>
+            <label><input type="radio" name="shadow" value="medium" data-bind="shadow" /><span>Medium</span></label>
+            <label><input type="radio" name="shadow" value="large" data-bind="shadow" /><span>Large</span></label>
+          </fieldset>
+          <label class="field range"><span>Tilt forward <output data-out="tiltX" data-deg></output></span><input type="range" min="-30" max="30" step="1" data-bind="tiltX" /></label>
+          <label class="field range"><span>Turn sideways <output data-out="tiltY" data-deg></output></span><input type="range" min="-30" max="30" step="1" data-bind="tiltY" /></label>
+          <button type="button" class="btn ghost wide" id="flatten">Reset tilt</button>
+        </section>
+
+        <section class="group">
+          <h2>Caption</h2>
+          <label class="field"><span>Text</span><input type="text" data-bind="caption.text" maxlength="200" placeholder="Shown under the image" /></label>
+          <div class="pair">
+            <label class="field color"><span>Colour</span><input type="color" data-bind="caption.color" /></label>
+            <fieldset class="seg">
+              <legend>Position</legend>
+              <label><input type="radio" name="caption.pos" value="top" data-bind="caption.pos" /><span>Top</span></label>
+              <label><input type="radio" name="caption.pos" value="bottom" data-bind="caption.pos" /><span>Bottom</span></label>
+            </fieldset>
+          </div>
+          <label class="field range"><span>Size <output data-out="caption.size"></output></span><input type="range" min="12" max="96" step="1" data-bind="caption.size" /></label>
+        </section>
+
+        <section class="group">
+          <h2>Templates</h2>
+          <p class="hint">A template keeps the look (background, frame, layout, theme) and leaves your image and code alone. Saved in this browser only.</p>
+          <form class="save-template" id="save-template">
+            <label class="field"><span>Name</span><input type="text" id="template-name" maxlength="60" required placeholder="Launch post" /></label>
+            <button type="submit" class="btn ghost">Save</button>
+          </form>
+          <ul class="templates" id="templates"></ul>
+        </section>
+      </aside>
+    </main>
+
+    <input type="file" id="file" accept="image/png,image/jpeg,image/webp,image/gif,image/avif" hidden />
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
