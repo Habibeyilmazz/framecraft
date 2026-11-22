@@ -32,7 +32,9 @@ async function drag(tool, a, b) {
   await app.mouse.move(...at(...b), { steps: 6 });
   await app.mouse.up();
 }
-await drag('Pixelate', [0.72, 0.755], [0.93, 0.81]);
+await app.getByRole('radio', { name: 'Colour #111111' }).check();
+await drag('Cover', [0.72, 0.755], [0.93, 0.81]); // a solid cover, as the README recommends for keys
+await app.getByRole('radio', { name: 'Colour #ff4d3d' }).check();
 await drag('Box', [0.24, 0.235], [0.468, 0.485]);
 await drag('Arrow', [0.62, 0.13], [0.48, 0.26]);
 await app.getByRole('radio', { name: 'Step', exact: true }).check();

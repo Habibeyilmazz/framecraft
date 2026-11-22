@@ -25,7 +25,7 @@ npm run dev        # then open http://localhost:4210
 
 **Screenshot mode**
 
-![Screenshot mode with a browser frame, a box, an arrow, two numbered steps and a pixelated deploy key](docs/screenshots/screenshot-mode.png)
+![Screenshot mode with a browser frame, a box, an arrow, two numbered steps and a deploy key hidden under a solid cover](docs/screenshots/screenshot-mode.png)
 
 - Drop an image on the page, paste it with Ctrl+V / ⌘V, or pick a file (PNG, JPEG, WebP, GIF, AVIF).
 - Frames: none, browser window (with an editable address), macOS window (with a title), phone. Light or dark windows.
@@ -61,7 +61,8 @@ npm run dev        # then open http://localhost:4210
 - Export SVG for code cards: the code stays real text with the fonts embedded, so it is sharp at any size
   ([example](docs/code-card.svg)). SVG is not offered for tilted cards, because SVG has no perspective transform.
 - **Copy link** puts the whole design in the URL (compressed), so anyone who opens it gets the same look.
-  Screenshots and background images are never put in the link.
+  Screenshots and background images are never put in the link. The address bar holds the current design as you
+  edit, including a code snippet, so the snippet ends up in your browser history like any other URL.
 - **Templates** save the look (not your image or code) in this browser's local storage.
 
 ![Code mode in the editor](docs/screenshots/code-mode.png)
@@ -82,6 +83,9 @@ On a narrow screen the preview sits above the settings and fills the width.
   onto the tilted card so annotations land where you click.
 - `src/svg.ts` builds the SVG from the same layout numbers, so the PNG and SVG match.
 - Fonts (Instrument Sans, JetBrains Mono) are bundled with the app, so it works offline and makes no third-party requests.
+- The built page carries a strict Content-Security-Policy (`vite.config.ts`): it may load only its own scripts, styles,
+  fonts and images, and inline scripts are blocked. It is a `<meta>` tag because static hosts such as GitHub Pages
+  cannot set headers, so `frame-ancestors` (framing protection) is not part of it.
 
 ## Development
 

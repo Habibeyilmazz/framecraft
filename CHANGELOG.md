@@ -5,6 +5,18 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Security
+
+- Round 3 ("security" review). New **Cover** redaction: a solid, opaque fill baked into the redacted copy of the
+  image. Blur and pixelate keep coarse letter shapes, and pixelated text in a known font can sometimes be
+  reconstructed (e.g. Depix), so the README now recommends Cover for passwords, keys and tokens. The README image
+  covers the fake deploy key instead of pixelating it.
+- The production build carries a Content-Security-Policy `<meta>` tag (`vite.config.ts`, build only, because the
+  dev server injects inline styles): `script-src 'self'`, `style-src 'self'`, no `unsafe-inline`, `object-src`,
+  `base-uri` and `form-action` set to `'none'`. Every e2e test fails if the page reports a policy violation, and
+  one test checks that an injected inline event handler is blocked.
+- README says that the address bar (and so browser history) holds the code snippet as you edit.
+
 ### Added
 
 - Mouse resizing: with the Pointer tool, the selected annotation shows a round handle (an arrow's tip, a box's
@@ -35,6 +47,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Notes for the next person
 
+- Round 3 ("security" review), checked and found fine: share-link decoding (base64url check, 200 kB input and 1 MB
+  inflate caps, every field clamped or enum-checked, colours must be `#rrggbb`); templates from localStorage go
+  through the same sanitizer; all user text reaches the DOM through `textContent` and the SVG through an escaper
+  (tested); no `eval`/`Function`/inline scripts; images are size- and pixel-capped; `npm audit` reports 0
+  vulnerabilities; git history has no secrets, local paths or PNG text metadata; both workflows use
+  `contents: read`, `persist-credentials: false` and actions pinned to SHAs that match their tags (checked with
+  `gh api`). Not done: Firefox/WebKit runs of the new tests happen only on CI (only Chromium is installed locally);
+  a crafted image that is small on disk but huge when decoded is only stopped by the browser's own decoder limits.
 - Round 2 ("design" review): looked at real screenshots at 1440 and 390 px, light and dark, plus 768/961/980 px;
   tabbed through the whole page (every stop has a visible ring); axe-core is clean. Not done: touch drag tested
   only through Playwright mouse events, not a real finger; no real Safari/Firefox by hand; no SVG export for
