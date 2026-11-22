@@ -275,6 +275,27 @@ test('an SVG file works as a screenshot, with or without a width and height', as
   expect(await page.title()).not.toBe('ran');
 });
 
+test('an SVG with HTML inside (foreignObject) either exports or is refused with a reason', async ({ page }) => {
+  const svg = Buffer.from(
+    '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#2050e0"/>' +
+      '<foreignObject width="640" height="360"><div xmlns="http://www.w3.org/1999/xhtml" style="font:40px sans-serif">Hello</div></foreignObject></svg>',
+  );
+  await page.getByRole('radio', { name: 'Screenshot', exact: true }).check();
+  await page.setInputFiles('#file', { name: 'html.svg', mimeType: 'image/svg+xml', buffer: svg });
+  const toolbar = page.getByRole('toolbar', { name: 'Annotation tools' });
+  await expect(toolbar.or(page.locator('#toast'))).toBeVisible();
+  if (await toolbar.isVisible()) {
+    // loaded, so it must not taint the canvas: a PNG exports
+    const dl = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download PNG' }).click();
+    expect(pngSize(await readFile((await (await dl).path())!)).w).toBeGreaterThan(0);
+  } else {
+    // Safari's engine treats such an SVG as cross-origin: refused before it can block every export
+    await expect(page.locator('#toast')).toHaveText(/HTML inside it/);
+    await expect(page.getByRole('heading', { name: 'Add a screenshot' })).toBeVisible();
+  }
+});
+
 test('pasting an image switches to screenshot mode', async ({ page, browserName }) => {
   test.skip(browserName === 'firefox', 'Firefox drops clipboardData from a synthetic paste event');
   const b64 = (await readFile(SAMPLE)).toString('base64');

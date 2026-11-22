@@ -334,6 +334,7 @@ const MAX_BYTES = 40 * 1024 * 1024;
 const SVG_PX = 2000;
 
 /** createImageBitmap refuses SVG files, so decode through an <img>, where an SVG runs no scripts and loads nothing. */
+const SVG_TAINTED = 'svg-tainted';
 async function decodeSvg(file: File): Promise<ImageBitmap> {
   const url = URL.createObjectURL(file);
   try {
@@ -345,7 +346,14 @@ async function decodeSvg(file: File): Promise<ImageBitmap> {
     const k = SVG_PX / Math.max(w, h);
     const c = document.createElement('canvas');
     [c.width, c.height] = [Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k))];
-    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    try {
+      ctx.getImageData(0, 0, 1, 1);
+    } catch {
+      // Safari's engine taints the canvas for an SVG with foreignObject (HTML inside): every export would then fail
+      throw new Error(SVG_TAINTED);
+    }
     return await createImageBitmap(c);
   } finally {
     URL.revokeObjectURL(url);
@@ -367,8 +375,9 @@ async function loadImage(file: File): Promise<Img | null> {
       return null;
     }
     return bmp;
-  } catch {
-    toast('That file could not be read as an image.', true);
+  } catch (e) {
+    if ((e as Error).message === SVG_TAINTED) toast('This browser cannot export an SVG with HTML inside it. Use a PNG of it instead.', true);
+    else toast('That file could not be read as an image.', true);
     return null;
   }
 }
