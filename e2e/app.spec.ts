@@ -261,6 +261,7 @@ test('the pointer drags any annotation, and the list picks which one the keyboar
   await page.getByLabel('Padding').fill('0');
   await loadShot(page);
   await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await drawn(page); // the canvas changes size with the frame
   const box = (await page.locator('#preview').boundingBox())!;
   const at = (u: number, v: number) => [box.x + box.width * u, box.y + box.height * v] as const;
   /** Count clearly red pixels in a small square of the preview around (u, v). */
