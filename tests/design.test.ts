@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_CODE, MAX_LABEL, MAX_NOTES, MAX_REDACTIONS, moveNote, nextStep, noteLimit, sanitize, toTemplate, type Note } from '../src/design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, FULL_CROP, handleOf, hitNote, MAX_CODE, MIN_CROP, MAX_LABEL, MAX_NOTES, MAX_REDACTIONS, moveNote, nextStep, noteLimit, sanitize, toTemplate, type Note } from '../src/design';
 
 describe('sanitize', () => {
   it('returns defaults for junk', () => {
@@ -32,6 +32,16 @@ describe('sanitize', () => {
     expect(d.caption.color).toBe('#abcdef');
     expect(d.code.lineNumbers).toBe(true);
     expect(d.code.fontSize).toBe(32);
+  });
+
+  it('keeps a crop inside the image and at least MIN_CROP a side', () => {
+    expect(sanitize({}).crop).toEqual(FULL_CROP);
+    expect(sanitize({ crop: { x: 0.25, y: 0.1, w: 0.5, h: 0.4 } }).crop).toEqual({ x: 0.25, y: 0.1, w: 0.5, h: 0.4 });
+    // a crop running off the right or bottom edge is pulled back in, keeping its size
+    expect(sanitize({ crop: { x: 0.9, y: 2, w: 0.5, h: 0.4 } }).crop).toEqual({ x: 0.5, y: 0.6, w: 0.5, h: 0.4 });
+    expect(sanitize({ crop: { x: -1, y: 0, w: 0, h: 7 } }).crop).toEqual({ x: 0, y: 0, w: MIN_CROP, h: 1 });
+    expect(sanitize({ crop: { x: '0.5', w: NaN } }).crop).toEqual(FULL_CROP);
+    expect(sanitize({ crop: 'all' }).crop).toEqual(FULL_CROP);
   });
 
   it('keeps a custom size whole and within 64..4096 px', () => {
@@ -131,12 +141,15 @@ describe('templates', () => {
     const t = JSON.parse(JSON.stringify(toTemplate(src)));
     expect(JSON.stringify(t)).not.toContain('secret code');
     expect(t.notes).toBeUndefined();
+    expect(t.crop).toBeUndefined();
 
     const cur = defaultDesign();
     cur.mode = 'shot';
     cur.code.text = 'mine';
     cur.url = 'my.site';
-    const out = applyTemplate(cur, t);
+    cur.crop = { x: 0.1, y: 0.2, w: 0.3, h: 0.4 };
+    const out = applyTemplate(cur, { ...t, crop: FULL_CROP }); // a crop in a stored template is never applied
+    expect(out.crop).toEqual(cur.crop);
     expect(out.padding).toBe(20);
     expect(out.code.theme).toBe('nord');
     expect(out.code.text).toBe('mine');
@@ -196,6 +209,13 @@ describe('moveNote', () => {
 });
 
 describe('hitNote', () => {
+  it('measures a step badge by the radius it is drawn with', () => {
+    const step: Note = { t: 'step', x: 0.5, y: 0.5, x2: 0, y2: 0, w: 0, h: 0, n: 1, c: '#ff4d3d' };
+    // 40 px from the centre: outside the default radius for 1000 px (18 + 6), inside a 50 px badge
+    expect(hitNote([step], 0.54, 0.5, 1000, 500, 6)).toBe(-1);
+    expect(hitNote([step], 0.54, 0.5, 1000, 500, 6, 50)).toBe(0);
+  });
+
   const note = (o: Partial<Note>): Note => ({ t: 'box', x: 0, y: 0, x2: 0, y2: 0, w: 0, h: 0, n: 1, c: '#ff4d3d', ...o });
   // content 1000 x 500 px, grab distance 6 px
   const hit = (notes: Note[], x: number, y: number) => hitNote(notes, x / 1000, y / 500, 1000, 500, 6);

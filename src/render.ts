@@ -1,6 +1,6 @@
 import { CODE_THEMES, parseLineRanges, type Highlighted } from './code';
-import { stepRadius, type Design, type Note } from './design';
-import { codeMetrics, fitText, labelFont, layoutCard, layoutScene, shotDisplaySize, type Box, type CardLayout, type CodeMetrics, type Scene } from './layout';
+import { FULL_CROP, stepRadius, type Crop, type Design, type Note } from './design';
+import { codeMetrics, fitText, labelFont, layoutCard, layoutScene, shotDisplaySize, wholeImageBox, type Box, type CardLayout, type CodeMetrics, type Scene } from './layout';
 import { applyH, homography, invert3, projectCard, type Mat3, type ProjPt } from './perspective';
 import { contrastInk, GRADIENTS, gradientLine, MESHES, meshBlobs, SHADOW_PRESETS } from './presets';
 
@@ -43,17 +43,25 @@ export function codeLayout(d: Design, hl: Highlighted): CodeMetrics {
 /** Natural content size for the current mode, or null when there is nothing to draw yet. */
 export function contentSize(d: Design, a: Assets): { w: number; h: number } | null {
   if (d.mode === 'code') return a.code ? codeLayout(d, a.code) : null;
-  return a.shot ? shotDisplaySize(a.shot.width, a.shot.height) : null;
+  return a.shot ? shotDisplaySize(a.shot.width * d.crop.w, a.shot.height * d.crop.h) : null;
 }
+
+/** The crop in effect: screenshots only, a code card is never cropped. */
+const cropOf = (d: Design): Crop => (d.mode === 'shot' ? d.crop : FULL_CROP);
 
 export interface Rendered {
   canvas: HTMLCanvasElement;
   scene: Scene;
   card: CardLayout;
-  /** Map a point in output logical px to content-relative coordinates (0..1 inside the content). */
+  /**
+   * Map a point in output logical px to image-relative coordinates (0..1 across the whole screenshot, even when it is
+   * cropped, which is where annotations live; for code, across the card's content).
+   */
   toContent: (x: number, y: number) => [number, number];
   /** The reverse of toContent. */
   toScene: (u: number, v: number) => [number, number];
+  /** The whole image's size in card px: what toContent's 0..1 spans. */
+  whole: { w: number; h: number };
 }
 
 export function roundRect(ctx: Ctx | Path2D, x: number, y: number, w: number, h: number, r: number) {
@@ -233,9 +241,9 @@ export function redact(img: Img, notes: Note[]): Img {
   return out;
 }
 
-/** Arrows, boxes, step badges and text labels, drawn over the (already redacted) image. */
-function drawNotes(ctx: Ctx, notes: Note[], c: Box) {
-  const unit = Math.max(2, c.w * 0.005);
+/** Arrows, boxes, step badges and text labels over the (already redacted) image in box c; shownW sizes lines and badges. */
+function drawNotes(ctx: Ctx, notes: Note[], c: Box, shownW: number) {
+  const unit = Math.max(2, shownW * 0.005);
   for (const n of notes) {
     ctx.strokeStyle = ctx.fillStyle = n.c;
     ctx.lineWidth = unit;
@@ -264,7 +272,7 @@ function drawNotes(ctx: Ctx, notes: Note[], c: Box) {
       ctx.fill();
       ctx.stroke();
     } else if (n.t === 'step') {
-      const r = stepRadius(c.w);
+      const r = stepRadius(shownW);
       const x = c.x + n.x * c.w, y = c.y + n.y * c.h;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);
@@ -297,6 +305,18 @@ function drawNotes(ctx: Ctx, notes: Note[], c: Box) {
   }
 }
 
+/** The cropped part of the redacted image, filling c, with the annotations over it (clipped to c). */
+function drawShot(ctx: Ctx, d: Design, c: Box, img: Img) {
+  const { x, y, w, h } = d.crop;
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(c.x, c.y, c.w, c.h);
+  ctx.clip();
+  ctx.drawImage(redact(img, d.notes), x * img.width, y * img.height, w * img.width, h * img.height, c.x, c.y, c.w, c.h);
+  drawNotes(ctx, d.notes, wholeImageBox(c, d.crop), c.w);
+  ctx.restore();
+}
+
 function drawShotCard(ctx: Ctx, d: Design, L: CardLayout, img: Img) {
   const c = L.content;
   ctx.beginPath();
@@ -311,8 +331,7 @@ function drawShotCard(ctx: Ctx, d: Design, L: CardLayout, img: Img) {
     ctx.clip();
     ctx.fillStyle = '#000';
     ctx.fillRect(c.x, c.y, c.w, c.h);
-    ctx.drawImage(redact(img, d.notes), c.x, c.y, c.w, c.h);
-    drawNotes(ctx, d.notes, c);
+    drawShot(ctx, d, c, img);
     if (c.h > c.w) {
       const iw = c.w * 0.32, ih = c.w * 0.094;
       ctx.beginPath();
@@ -332,8 +351,7 @@ function drawShotCard(ctx: Ctx, d: Design, L: CardLayout, img: Img) {
   ctx.fillStyle = d.dark ? '#1c1d21' : '#ffffff';
   ctx.fillRect(0, 0, L.w, L.h);
   if (L.bar) drawWindowChrome(ctx, d, L);
-  ctx.drawImage(redact(img, d.notes), c.x, c.y, c.w, c.h);
-  drawNotes(ctx, d.notes, c);
+  drawShot(ctx, d, c, img);
   if (d.frame !== 'none') {
     ctx.beginPath();
     roundRect(ctx, 0.5, 0.5, L.w - 1, L.h - 1, L.radius);
@@ -513,15 +531,16 @@ export function render(d: Design, a: Assets, scale: number, target?: HTMLCanvasE
     quad.map((q) => [q.x, q.y]),
   );
   const inv = invert3(H);
+  const whole = wholeImageBox(card.content, cropOf(d));
   const toContent = (x: number, y: number): [number, number] => {
     const [px, py] = applyH(inv, [x, y]);
     const u = (px - m) / cs;
     const v = (py - m) / cs;
-    return [(u - card.content.x) / card.content.w, (v - card.content.y) / card.content.h];
+    return [(u - whole.x) / whole.w, (v - whole.y) / whole.h];
   };
   const toScene = (u: number, v: number): [number, number] =>
-    applyH(H, [(card.content.x + u * card.content.w) * cs + m, (card.content.y + v * card.content.h) * cs + m]);
-  return { canvas, scene, card, toContent, toScene };
+    applyH(H, [(whole.x + u * whole.w) * cs + m, (whole.y + v * whole.h) * cs + m]);
+  return { canvas, scene, card, toContent, toScene, whole };
 }
 
 // Safari's canvas area cap is the smallest of the major browsers (about 16.7 megapixels on iOS, 268 on desktop Chrome);

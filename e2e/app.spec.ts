@@ -688,15 +688,18 @@ test('a second label gets its own words in the text box, even while the box has 
   await expect(words).toHaveValue('First');
 });
 
-/** The annotations in the share link (the URL updates 300 ms after a change). */
-const linkNotes = (page: Page) =>
+type Rect = { x: number; y: number; w: number; h: number };
+/** The design in the share link (the URL updates 300 ms after a change). */
+const linkDesign = (page: Page) =>
   page.evaluate(async () => {
     const s = location.hash.slice(3).replace(/-/g, '+').replace(/_/g, '/');
-    if (!s) return [];
+    if (!s) return { notes: [], crop: { x: 0, y: 0, w: 1, h: 1 } };
     const bytes = Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
     const json = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
-    return JSON.parse(json).notes as { t: string; n: number; w: number; h: number; s?: string }[];
+    return JSON.parse(json) as { notes: ({ t: string; n: number; s?: string } & Rect)[]; crop: Rect };
   });
+/** The annotations in the share link. */
+const linkNotes = async (page: Page) => (await linkDesign(page)).notes;
 
 test('undo brings back a deleted annotation, and new steps never repeat a number', async ({ page }) => {
   await loadShot(page);
@@ -711,7 +714,7 @@ test('undo brings back a deleted annotation, and new steps never repeat a number
   await page.keyboard.press('ControlOrMeta+z');
   await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveText(['Step 1', 'Step 3', 'Step 4']);
   await page.getByRole('button', { name: 'Remove all' }).click();
-  await page.getByRole('button', { name: 'Undo annotation change' }).click();
+  await page.getByRole('button', { name: 'Undo annotation or crop change' }).click();
   await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveCount(3);
   // undo walks back through the history, then has nothing left to undo
   for (let i = 0; i < 8; i++) await page.keyboard.press('ControlOrMeta+z');
@@ -758,6 +761,97 @@ test('a label shrunk by long words grows back when they get shorter', async ({ p
   await words.fill('Hi');
   await expect.poll(async () => (await linkNotes(page))[0]?.w).toBeCloseTo(before.w, 3);
   expect((await linkNotes(page))[0].h).toBeCloseTo(before.h, 3);
+});
+
+test('crop: drag over the part to keep, export just that part, keep annotations on the image, undo and reset', async ({ page }) => {
+  await loadShot(page); // 2200 x 1280, shown at 1400 x 815
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await page.getByLabel('Padding').fill('0');
+  const at = async (u: number, v: number) => {
+    const box = (await page.locator('#preview').boundingBox())!;
+    return [box.x + box.width * u, box.y + box.height * v] as const;
+  };
+  const dragOn = async (from: [number, number], to: [number, number]) => {
+    await page.mouse.move(...(await at(...from)));
+    await page.mouse.down();
+    await page.mouse.move(...(await at(...to)), { steps: 4 });
+    await page.mouse.up();
+  };
+  // a step on the whole image, near its top-left corner, which the crop will leave out
+  await page.getByRole('radio', { name: 'Step', exact: true }).check();
+  await page.mouse.click(...(await at(0.1, 0.1)));
+  await expect(page.getByRole('button', { name: 'Step 1', exact: true })).toBeVisible();
+
+  await page.getByRole('radio', { name: 'Crop', exact: true }).check();
+  await page.mouse.click(...(await at(0.5, 0.5))); // a click is not a crop
+  await expect(page.locator('#toast')).toHaveText('Drag over the part of the image to keep.');
+  await dragOn([0.5, 0.25], [1, 1]); // the right half, bottom three quarters
+  await expect(page.locator('#crop-info')).toHaveText(/^Cropped to 110\d × 9\d\d of 2200 × 1280 px\.$/);
+  await expect.poll(async () => (await linkDesign(page)).crop.x).toBeCloseTo(0.5, 2);
+  const crop = (await linkDesign(page)).crop;
+  // the Crop tool shows the whole image; back on the Pointer, the preview and the export are the crop alone
+  await page.getByRole('radio', { name: 'Pointer', exact: true }).check();
+  await drawn(page);
+  const shown = await readout(page);
+  expect(shown.w).toBeCloseTo(crop.w * 2200, -1);
+  expect(shown.h).toBeCloseTo(crop.h * 1280, -1);
+
+  // an arrow drawn on the cropped view lands on that spot of the whole image
+  await page.getByRole('radio', { name: 'Arrow', exact: true }).check();
+  await dragOn([0.2, 0.5], [0.6, 0.5]);
+  await expect.poll(async () => (await linkNotes(page)).length).toBe(2);
+  const arrow = (await linkDesign(page)).notes[1] as unknown as { x: number; x2: number; y: number };
+  expect(arrow.x).toBeCloseTo(crop.x + 0.2 * crop.w, 2);
+  expect(arrow.x2).toBeCloseTo(crop.x + 0.6 * crop.w, 2);
+  expect(arrow.y).toBeCloseTo(crop.y + 0.5 * crop.h, 2);
+
+  // the downloaded PNG holds the cropped pixels of the source image
+  await page.getByRole('radio', { name: '1x' }).check();
+  const dl = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download PNG' }).click();
+  const png = await readFile((await (await dl).path())!);
+  expect(pngSize(png)).toEqual(shown);
+  const diff = await page.evaluate(
+    async ([out, src, c]) => {
+      const load = async (b64: string) => createImageBitmap(new Blob([Uint8Array.from(atob(b64), (ch) => ch.charCodeAt(0))]));
+      const [a, b] = [await load(out), await load(src)];
+      const pixels = (bmp: ImageBitmap, sx: number, sy: number, sw: number, sh: number) => {
+        const ctx = new OffscreenCanvas(40, 40).getContext('2d')!;
+        ctx.drawImage(bmp, sx, sy, sw, sh, 0, 0, 40, 40);
+        return ctx.getImageData(0, 0, 40, 40).data;
+      };
+      // the bottom-right quarter of the export (no annotations there) against the same part of the source
+      const p = pixels(a, a.width / 2, a.height / 2, a.width / 2, a.height / 2);
+      const q = pixels(b, (c.x + c.w / 2) * b.width, (c.y + c.h / 2) * b.height, (c.w / 2) * b.width, (c.h / 2) * b.height);
+      let sum = 0;
+      for (let i = 0; i < p.length; i += 4) sum += Math.abs(p[i] - q[i]) + Math.abs(p[i + 1] - q[i + 1]) + Math.abs(p[i + 2] - q[i + 2]);
+      return sum / (p.length / 4) / 3;
+    },
+    [png.toString('base64'), (await readFile(SAMPLE)).toString('base64'), crop] as const,
+  );
+  expect(diff).toBeLessThan(1.5); // mean difference per channel, out of 255: about 0.2 here (resampling); 6 for the uncropped image
+
+  // the keyboard moves and resizes the crop; undo steps back through crop changes too
+  await page.getByRole('radio', { name: 'Crop', exact: true }).check();
+  await page.locator('#preview').focus();
+  await page.keyboard.press('Delete');
+  await expect(page.locator('#crop-row')).toBeHidden();
+  for (let i = 0; i < 10; i++) await page.keyboard.press('Alt+ArrowLeft');
+  await expect(page.locator('#crop-info')).toHaveText('Cropped to 1980 × 1280 of 2200 × 1280 px.');
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(page.locator('#crop-info')).toHaveText('Cropped to 2002 × 1280 of 2200 × 1280 px.');
+
+  // the crop travels in the link with the annotations; replacing the image clears both
+  await page.waitForTimeout(400);
+  const fresh = await page.context().newPage();
+  await fresh.goto(page.url());
+  await fresh.setInputFiles('#file', SAMPLE);
+  await expect(fresh.locator('#crop-info')).toHaveText('Cropped to 2002 × 1280 of 2200 × 1280 px.');
+  await fresh.getByRole('button', { name: 'Show whole image' }).click();
+  await expect(fresh.locator('#crop-row')).toBeHidden();
+  await page.setInputFiles('#file', SAMPLE);
+  await expect(page.locator('#crop-row')).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Step 1', exact: true })).toHaveCount(0);
 });
 
 test('a right-click on the preview does not place an annotation', async ({ page }) => {

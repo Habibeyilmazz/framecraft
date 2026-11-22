@@ -58,7 +58,20 @@ export interface Design {
     bar: boolean;
   };
   notes: Note[];
+  /** The part of the screenshot shown, in image-relative coordinates (0..1). Annotations stay relative to the whole image. */
+  crop: Crop;
 }
+
+export interface Crop {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export const FULL_CROP: Crop = { x: 0, y: 0, w: 1, h: 1 };
+/** The smallest crop side, as a share of the image. */
+export const MIN_CROP = 0.02;
 
 // it must auto-detect as TypeScript, the language its file name (export.ts) promises (tests/code.test.ts)
 export const SAMPLE_CODE = `// Pick a frame, drop a screenshot, ship the launch post.
@@ -103,6 +116,7 @@ export function defaultDesign(): Design {
       bar: true,
     },
     notes: [],
+    crop: { ...FULL_CROP },
   };
 }
 
@@ -162,8 +176,9 @@ export const stepRadius = (w: number) => Math.max(10, w * 0.018);
 /**
  * Index of the topmost annotation at (x, y) in 0..1 content coordinates, or -1. w and h are the content size in px
  * and tol is the grab distance in the same px, so hits are measured in real distance whatever the aspect ratio.
+ * stepR is a step badge's radius in those px (badges are sized by the shown part of a cropped image, not the whole).
  */
-export function hitNote(notes: Note[], x: number, y: number, w: number, h: number, tol: number): number {
+export function hitNote(notes: Note[], x: number, y: number, w: number, h: number, tol: number, stepR = stepRadius(w)): number {
   const px = x * w;
   const py = y * h;
   for (let i = notes.length - 1; i >= 0; i--) {
@@ -174,7 +189,7 @@ export function hitNote(notes: Note[], x: number, y: number, w: number, h: numbe
       const t = len2 ? Math.min(1, Math.max(0, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / len2)) : 0;
       if (Math.hypot(px - ax - t * (bx - ax), py - ay - t * (by - ay)) <= tol) return i;
     } else if (n.t === 'step') {
-      if (Math.hypot(px - n.x * w, py - n.y * h) <= stepRadius(w) + tol) return i;
+      if (Math.hypot(px - n.x * w, py - n.y * h) <= stepR + tol) return i;
     } else {
       const [l, t, r, b] = [n.x * w, n.y * h, (n.x + n.w) * w, (n.y + n.h) * h];
       const near = px >= l - tol && px <= r + tol && py >= t - tol && py <= b + tol;
@@ -272,7 +287,16 @@ export function sanitize(input: unknown): Design {
       bar: bool(code.bar, d.code.bar),
     },
     notes: sanitizeNotes(o.notes),
+    crop: sanitizeCrop(o.crop),
   };
+}
+
+/** A crop inside the image and at least MIN_CROP a side; anything else is the whole image. */
+export function sanitizeCrop(v: unknown): Crop {
+  const o = obj(v);
+  const w = num(o.w, MIN_CROP, 1, 1);
+  const h = num(o.h, MIN_CROP, 1, 1);
+  return { x: num(o.x, 0, 1 - w, 0), y: num(o.y, 0, 1 - h, 0), w, h };
 }
 
 /** The first MAX_NOTES valid annotations, keeping only the first MAX_REDACTIONS redactions among them. */
@@ -329,10 +353,10 @@ export async function decodeDesign(s: string): Promise<Design | null> {
 
 // ---- templates: the style without the content ----
 
-export type Template = Omit<Design, 'notes' | 'mode' | 'code'> & { code: Omit<Design['code'], 'text' | 'highlight' | 'title'> };
+export type Template = Omit<Design, 'notes' | 'crop' | 'mode' | 'code'> & { code: Omit<Design['code'], 'text' | 'highlight' | 'title'> };
 
 export function toTemplate(d: Design): Template {
-  const { notes: _n, mode: _m, code, ...rest } = d;
+  const { notes: _n, crop: _c, mode: _m, code, ...rest } = d;
   const { text: _t, highlight: _h, title: _ti, ...codeStyle } = code;
   return { ...structuredClone(rest), code: { ...codeStyle } };
 }
@@ -340,6 +364,6 @@ export function toTemplate(d: Design): Template {
 /** Apply a stored template's style over the current design, keeping its content. */
 export function applyTemplate(current: Design, t: unknown): Design {
   const o = obj(t);
-  const style = sanitize({ ...o, mode: current.mode, notes: current.notes, code: { ...obj(o.code), text: current.code.text, highlight: current.code.highlight, title: current.code.title } });
+  const style = sanitize({ ...o, mode: current.mode, notes: current.notes, crop: current.crop, code: { ...obj(o.code), text: current.code.text, highlight: current.code.highlight, title: current.code.title } });
   return { ...style, url: current.url, title: current.title };
 }

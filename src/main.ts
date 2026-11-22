@@ -2,7 +2,7 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource-variable/instrument-sans';
 import './style.css';
 import { CODE_THEMES, highlight, LANGUAGES, type Highlighted } from './code';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_LABEL, moveNote, nextStep, noteLimit, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, FULL_CROP, handleOf, hitNote, MAX_LABEL, MIN_CROP, moveNote, nextStep, noteLimit, sanitize, sanitizeCrop, stepRadius, toTemplate, type Crop, type Design, type Note, type NoteKind } from './design';
 import { labelFont, labelSize, layoutCard, layoutScene } from './layout';
 import { GRADIENTS, MESHES, NOTE_COLORS, SIZE_PRESETS } from './presets';
 import { checkExportSize, contentSize, measureLabel, MONO, render, SANS, toBlob, type Assets, type Img, type Rendered } from './render';
@@ -120,6 +120,10 @@ function syncControls() {
   svgBtn.title = tilted ? 'SVG cannot show tilt. Reset tilt to export SVG.' : 'Download as SVG with selectable text';
   $('#detected').textContent = design.mode === 'code' && design.code.lang === 'auto' ? `Detected: ${LANGUAGES[codeHighlight().lang]?.label ?? 'plain text'}` : '';
   $('#replace-shot').textContent = shot ? 'Replace image' : 'Choose image';
+  const { x, y, w, h } = design.crop;
+  const cropped = !!shot && design.mode === 'shot' && (x > 0 || y > 0 || w < 1 || h < 1);
+  $('#crop-row').hidden = !cropped;
+  if (cropped) $('#crop-info').textContent = `Cropped to ${Math.round(w * shot!.width)} × ${Math.round(h * shot!.height)} of ${shot!.width} × ${shot!.height} px.`;
   // still clickable: the click explains why there is nothing to export yet
   const empty = design.mode === 'shot' && !shot;
   for (const b of $$('#copy-image, #export-png')) {
@@ -199,9 +203,38 @@ function scheduleDraw() {
   frame = requestAnimationFrame(draw);
 }
 
+/** While the Crop tool is active the preview shows the whole image, with the crop marked on it. */
+const cropping = () => design.mode === 'shot' && !!shot && tool() === 'crop';
+/** The crop being dragged out, before it is committed. */
+let cropDraft: { crop: Crop; ox: number; oy: number } | null = null;
+
+/** Dim the image outside the crop and outline the crop, on the preview only (exports never show it). */
+function drawCropMarks(r: Rendered, crop: Crop) {
+  const ctx = canvas.getContext('2d')!;
+  const k = canvas.width / r.scene.W;
+  ctx.save();
+  ctx.setTransform(k, 0, 0, k, 0, 0);
+  const quad = (b: Crop) => [[b.x, b.y], [b.x + b.w, b.y], [b.x + b.w, b.y + b.h], [b.x, b.y + b.h]].map(([u, v]) => r.toScene(u, v));
+  const path = (pts: [number, number][], p = new Path2D()) => {
+    pts.forEach(([px, py], i) => (i ? p.lineTo(px, py) : p.moveTo(px, py)));
+    p.closePath();
+    return p;
+  };
+  const inner = quad(crop);
+  const dim = path(inner, path(quad(FULL_CROP)));
+  ctx.fillStyle = 'rgba(8, 10, 12, 0.6)';
+  ctx.fill(dim, 'evenodd');
+  ctx.lineWidth = 2 / (canvas.clientWidth / r.scene.W); // 2 screen px
+  ctx.strokeStyle = '#ffffff';
+  ctx.setLineDash([6 * ctx.lineWidth / 2, 4 * ctx.lineWidth / 2]);
+  ctx.stroke(path(inner));
+  ctx.restore();
+}
+
 function draw() {
   const a = assets();
-  const size = contentSize(design, a);
+  const view = cropping() ? { ...design, crop: FULL_CROP } : design;
+  const size = contentSize(view, a);
   $('#empty').hidden = !(design.mode === 'shot' && !shot);
   canvas.hidden = !size;
   if (!size) {
@@ -210,7 +243,7 @@ function draw() {
     placeHandle();
     return;
   }
-  const scene = layoutScene(design, layoutCard(design, size));
+  const scene = layoutScene(view, layoutCard(view, size));
   const box = wrap.getBoundingClientRect();
   const pad = 2 * parseFloat(getComputedStyle(wrap).paddingLeft);
   // stacked layout: the stage grows to fit the preview, so cap it by the viewport instead of the stage
@@ -218,11 +251,13 @@ function draw() {
   const f = Math.min(1, (box.width - pad) / scene.W, maxH / scene.H);
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   // never more than 4096 px a side: a tiny share link can describe a card far larger than any screen
-  rendered = render(design, a, Math.min(Math.max(0.05, f) * dpr, PREVIEW_MAX / scene.W, PREVIEW_MAX / scene.H), canvas);
+  rendered = render(view, a, Math.min(Math.max(0.05, f) * dpr, PREVIEW_MAX / scene.W, PREVIEW_MAX / scene.H), canvas);
   canvas.style.width = `${Math.round(scene.W * f)}px`;
   canvas.style.height = `${Math.round(scene.H * f)}px`;
+  if (rendered && view !== design) drawCropMarks(rendered, cropDraft?.crop ?? design.crop);
   const s = design.scale;
-  $('#readout').textContent = `${scene.W} × ${scene.H} · exports at ${s}x as ${scene.W * s} × ${scene.H * s} px`;
+  const out = view === design ? scene : layoutScene(design, layoutCard(design, contentSize(design, a)!)); // what exports, not the whole-image view
+  $('#readout').textContent = `${out.W} × ${out.H} · exports at ${s}x as ${out.W * s} × ${out.H * s} px`;
   placeHandle();
   // canvas text draws a fallback while a font file it needs (e.g. the Cyrillic subset, fetched on first use) loads,
   // and nothing redraws when it lands (WebKit fires no 'loadingdone' for it), so ask for those files and redraw then
@@ -252,18 +287,19 @@ function placeHandle() {
   el.style.top = `${canvas.offsetTop + canvas.clientTop + y * k}px`;
 }
 
-/** Undo history: the annotations as they were before each change (as JSON, so later edits cannot alter them). */
+/** Undo history: the annotations and crop as they were before each change (as JSON, so later edits cannot alter them). */
 const past: string[] = [];
-let notesNow = '[]';
+const snapshot = () => JSON.stringify([design.notes, design.crop]);
+let snapNow = '';
 
 let urlTimer = 0;
 function commit(change?: () => void) {
   change?.();
-  const now = JSON.stringify(design.notes);
-  if (now !== notesNow) {
-    past.push(notesNow);
+  const now = snapshot();
+  if (now !== snapNow) {
+    past.push(snapNow);
     if (past.length > 200) past.shift();
-    notesNow = now;
+    snapNow = now;
   }
   syncControls();
   scheduleDraw();
@@ -317,12 +353,15 @@ async function loadImage(file: File): Promise<Img | null> {
 async function useShot(file: File) {
   const img = await loadImage(file);
   if (!img) return;
-  // the old image's annotations do not belong on a new one; with no image yet, they came from a link or a reload
+  // the old image's annotations and crop do not belong on a new one; with no image yet, they came from a link or a reload
   const replacing = !!shot;
   shot = img;
   commit(() => {
     design.mode = 'shot';
-    if (replacing) design.notes = [];
+    if (replacing) {
+      design.notes = [];
+      design.crop = { ...FULL_CROP };
+    }
   });
   past.length = 0;
 }
@@ -348,7 +387,7 @@ let draft: { note: Note; ox: number; oy: number } | null = null;
 let drag: { note: Note; orig: Note; sx: number; sy: number; resize: boolean } | null = null;
 /** The pointer drawing or dragging; other fingers are ignored until it lifts. */
 let pointerId = -1;
-const busy = (e: PointerEvent) => !!(draft || drag) && e.pointerId !== pointerId;
+const busy = (e: PointerEvent) => !!(draft || drag || cropDraft) && e.pointerId !== pointerId;
 
 /** Content px that are about n screen px on the preview. */
 const screenPx = (n: number) => (rendered ? (n * rendered.scene.W) / canvas.getBoundingClientRect().width / rendered.scene.k : 0);
@@ -356,8 +395,8 @@ const screenPx = (n: number) => (rendered ? (n * rendered.scene.W) / canvas.getB
 /** The annotation under the pointer, grabbed within about 6 screen px. */
 function noteAt(p: [number, number]): Note | undefined {
   if (!rendered) return;
-  const { w, h } = rendered.card.content;
-  return design.notes[hitNote(design.notes, p[0], p[1], w, h, screenPx(6))];
+  const { w, h } = rendered.whole;
+  return design.notes[hitNote(design.notes, p[0], p[1], w, h, screenPx(6), stepRadius(rendered.card.content.w))];
 }
 
 /** The selected annotation, if the pointer is on its resize handle (drawn by placeHandle). */
@@ -365,7 +404,7 @@ function handleAt(p: [number, number], reach = 10): Note | undefined {
   const note = current();
   const hp = note && rendered && handleOf(note);
   if (!hp) return;
-  const { w, h } = rendered!.card.content;
+  const { w, h } = rendered!.whole;
   return Math.hypot((p[0] - hp[0]) * w, (p[1] - hp[1]) * h) <= screenPx(reach) ? note : undefined;
 }
 
@@ -377,6 +416,11 @@ function pointerToContent(e: PointerEvent): [number, number] | null {
   return rendered.toContent(x, y);
 }
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
+/** A point in image coordinates pulled inside the crop, so drawing never runs off the part that shows. */
+const intoCrop = ([u, v]: [number, number]): [number, number] => {
+  const { x, y, w, h } = design.crop;
+  return [Math.min(x + w, Math.max(x, u)), Math.min(y + h, Math.max(y, v))];
+};
 
 // ---------- text labels ----------
 
@@ -385,7 +429,7 @@ const labelInput = $<HTMLInputElement>('#label-text');
 /** Size a text label to fit its words at font size fs (content px), shifting it left or up to stay on the image. */
 function fitLabel(n: Note, fs: number) {
   if (!rendered) return;
-  const { w, h } = rendered.card.content;
+  const { w, h } = rendered.whole;
   const size = labelSize(measureLabel(n.s ?? ''), fs);
   n.w = Math.min(1, size.w / w);
   n.h = Math.min(1, size.h / h);
@@ -399,7 +443,7 @@ function placeLabel(n: Note, x: number, y: number) {
   const fs = Math.max(12, w * 0.024);
   n.s = 'Label';
   n.x = x;
-  n.y = Math.max(0, y - (fs * 0.8) / (rendered?.card.content.h ?? 1));
+  n.y = Math.max(0, y - (fs * 0.8) / (rendered?.whole.h ?? 1));
   fitLabel(n, fs);
 }
 
@@ -417,7 +461,7 @@ function syncLabelInput() {
 function editLabel() {
   const n = current();
   if (n?.t !== 'text' || !rendered) return;
-  const { w, h } = rendered.card.content;
+  const { w, h } = rendered.whole;
   // keep the font size the label has now; the pill grows or shrinks around the new words. A pill as wide as the
   // image was squeezed by long words, so its height (which fitLabel never squeezes) holds the size to return to
   const fs = labelFont(measureLabel(n.s ?? ''), n.w >= 1 ? Infinity : n.w * w, n.h * h);
@@ -432,12 +476,19 @@ function focusLabelInput() {
 }
 
 canvas.addEventListener('pointerdown', (e) => {
-  const t = tool() as NoteKind | '';
+  const t = tool() as NoteKind | '' | 'crop';
   // a right-click opens the menu, and a second finger must not draw or place anything
-  if (design.mode !== 'shot' || !shot || e.button !== 0 || !e.isPrimary || draft || drag) return;
+  if (design.mode !== 'shot' || !shot || e.button !== 0 || !e.isPrimary || draft || drag || cropDraft) return;
   const p = pointerToContent(e);
   if (!p) return;
   pointerId = e.pointerId;
+  if (t === 'crop') {
+    const [x, y] = [clamp01(p[0]), clamp01(p[1])];
+    cropDraft = { crop: { x, y, w: 0, h: 0 }, ox: x, oy: y };
+    canvas.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    return;
+  }
   if (!t) {
     const handle = handleAt(p, e.pointerType === 'touch' ? 22 : 10); // fingers are less precise
     const note = handle ?? noteAt(p);
@@ -448,7 +499,7 @@ canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     return renderNotesList();
   }
-  if (p[0] < 0 || p[0] > 1 || p[1] < 0 || p[1] > 1) return;
+  if (intoCrop(p).some((v, i) => v !== p[i])) return; // outside the part of the image that shows
   const full = noteLimit(design.notes, t);
   if (full) return toast(full);
   const [x, y] = p;
@@ -475,11 +526,16 @@ canvas.addEventListener('pointermove', (e) => {
     moveNote(drag.note, p[0] - drag.sx, p[1] - drag.sy, drag.resize);
     return scheduleDraw();
   }
+  if (cropDraft) {
+    const [x, y, { ox, oy }] = [clamp01(p[0]), clamp01(p[1]), cropDraft];
+    cropDraft.crop = { x: Math.min(ox, x), y: Math.min(oy, y), w: Math.abs(x - ox), h: Math.abs(y - oy) };
+    return scheduleDraw();
+  }
   const pointing = !draft && !tool() && design.mode === 'shot';
   if (pointing && handleAt(p)) canvas.dataset.grab = 'resize';
   else canvas.toggleAttribute('data-grab', pointing && !!noteAt(p));
   if (!draft) return;
-  const [x, y] = [clamp01(p[0]), clamp01(p[1])];
+  const [x, y] = intoCrop(p);
   const n = draft.note;
   if (n.t === 'arrow') {
     n.x2 = x;
@@ -499,6 +555,15 @@ function endDraft(e: PointerEvent) {
     drag = null;
     commit();
   }
+  if (cropDraft) {
+    const { crop } = cropDraft;
+    cropDraft = null;
+    if (crop.w >= MIN_CROP && crop.h >= MIN_CROP) commit(() => (design.crop = sanitizeCrop(crop)));
+    else {
+      toast('Drag over the part of the image to keep.');
+      scheduleDraw();
+    }
+  }
   if (!draft) return;
   const n = draft.note;
   const tiny = n.t === 'arrow' ? Math.hypot(n.x2 - n.x, n.y2 - n.y) < 0.01 : n.w < 0.005 || n.h < 0.005;
@@ -513,21 +578,45 @@ canvas.addEventListener('pointerup', endDraft);
 canvas.addEventListener('pointercancel', endDraft);
 canvas.addEventListener('lostpointercapture', endDraft); // no pointerup can leave a drawing stuck and block the next one
 
+const DIRS: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
+/** Keyboard cropping: arrows move the crop, Alt+arrows resize it, Delete shows the whole image again. */
+function cropKey(e: KeyboardEvent) {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    return toast('Drag over the part to keep. Arrow keys move the crop, Alt+arrow keys resize it, Delete shows the whole image.');
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault();
+    return commit(() => (design.crop = { ...FULL_CROP }));
+  }
+  if (!DIRS[e.key]) return;
+  e.preventDefault();
+  const step = e.shiftKey ? 0.05 : 0.01;
+  const box = { t: 'box', ...design.crop } as Note;
+  moveNote(box, DIRS[e.key][0] * step, DIRS[e.key][1] * step, e.altKey);
+  commit(() => (design.crop = sanitizeCrop(box)));
+}
+
 // Keyboard alternative to drawing: Enter adds, arrows move, Alt+arrows resize, Delete removes the selected annotation.
 canvas.addEventListener('keydown', (e) => {
   if (design.mode !== 'shot' || !shot) return;
-  const t = tool() as NoteKind | '';
+  const t = tool() as NoteKind | '' | 'crop';
+  if (t === 'crop') return cropKey(e);
+  // sizes and steps below are shares of the part that shows, mapped to the whole image
+  const { x: cx, y: cy, w: cw, h: ch } = design.crop;
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
     if (!t) return toast('Pick a tool first, then press Enter to add it.');
     const full = noteLimit(design.notes, t);
     if (full) return toast(full);
-    const n: Note = { t, x: 0.35, y: 0.35, x2: 0.5, y2: 0.5, w: 0.3, h: 0.3, n: 1, c: noteColor };
+    const n: Note = { t, x: cx + 0.35 * cw, y: cy + 0.35 * ch, x2: cx + 0.5 * cw, y2: cy + 0.5 * ch, w: 0.3 * cw, h: 0.3 * ch, n: 1, c: noteColor };
     if (t === 'step') {
-      n.x = n.y = 0.5;
+      n.x = cx + 0.5 * cw;
+      n.y = cy + 0.5 * ch;
       n.n = nextStep(design.notes);
     }
-    if (t === 'text') placeLabel(n, 0.35, 0.35);
+    if (t === 'text') placeLabel(n, n.x, n.y);
     selected = n;
     commit(() => design.notes.push(n));
     if (t === 'text') return focusLabelInput(); // Enter or Escape there comes back here
@@ -540,20 +629,19 @@ canvas.addEventListener('keydown', (e) => {
     e.preventDefault();
     return commit(() => design.notes.splice(design.notes.indexOf(note), 1));
   }
-  const dir: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-  if (!dir[e.key]) return;
+  if (!DIRS[e.key]) return;
   e.preventDefault();
   const step = e.shiftKey ? 0.05 : 0.01;
-  const [dx, dy] = dir[e.key].map((v) => v * step);
+  const [dx, dy] = [DIRS[e.key][0] * step * cw, DIRS[e.key][1] * step * ch];
   commit(() => moveNote(note, dx, dy, e.altKey));
 });
 
 function undoNote() {
   // not mid-drag: the pointer would keep moving an annotation that is no longer in the design
-  if (design.mode !== 'shot' || !past.length || draft || drag) return;
+  if (design.mode !== 'shot' || !past.length || draft || drag || cropDraft) return;
   const at = selected ? design.notes.indexOf(selected) : -1;
-  notesNow = past.pop()!;
-  design.notes = JSON.parse(notesNow);
+  snapNow = past.pop()!;
+  [design.notes, design.crop] = JSON.parse(snapNow);
   selected = design.notes[at]; // the copies are new objects: keep the same one selected, so Delete still hits it
   commit();
 }
@@ -724,6 +812,7 @@ function wire() {
   });
   $('#shuffle').addEventListener('click', () => commit(() => (design.bg.seed = Math.floor(Math.random() * 1e9))));
   $('#flatten').addEventListener('click', () => commit(() => (design.tiltX = design.tiltY = 0)));
+  $('#reset-crop').addEventListener('click', () => commit(() => (design.crop = { ...FULL_CROP })));
   $('#save-template').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = $<HTMLInputElement>('#template-name');
@@ -793,7 +882,7 @@ async function start() {
   await loadHash();
   window.addEventListener('hashchange', () => loadHash().then(() => commit()));
   design = sanitize(design);
-  notesNow = JSON.stringify(design.notes);
+  snapNow = snapshot();
   renderTemplates();
   syncControls();
   draw();

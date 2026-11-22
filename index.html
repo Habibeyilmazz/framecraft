@@ -37,6 +37,7 @@
         <div class="toolbar" id="tools" role="toolbar" aria-label="Annotation tools" data-show="mode:shot" hidden>
           <fieldset class="tools" aria-label="Tool">
             <label title="Drag an annotation to move it"><input type="radio" name="tool" value="" checked /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3l10 6-4.5 1.2L8.6 15z"/></svg>Pointer</span></label>
+            <label title="Drag over the part of the image to keep"><input type="radio" name="tool" value="crop" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M6 2.5V14h11.5M2.5 6H14v11.5"/></svg>Crop</span></label>
             <label><input type="radio" name="tool" value="arrow" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16L15 5M8 5h7v7"/></svg>Arrow</span></label>
             <label><input type="radio" name="tool" value="box" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="5" width="13" height="10" rx="2"/></svg>Box</span></label>
             <label><input type="radio" name="tool" value="blur" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" stroke-dasharray="2 2.4"/><circle cx="10" cy="10" r="2.5"/></svg>Blur</span></label>
@@ -47,13 +48,13 @@
           </fieldset>
           <label class="label-field" id="label-field" hidden><span class="visually-hidden">Label text</span><input type="text" id="label-text" maxlength="80" autocomplete="off" spellcheck="false" /></label>
           <fieldset class="swatches small" aria-label="Annotation colour" id="note-colors" title="Colour of the next annotation. With the Pointer, recolours the selected one."></fieldset>
-          <button type="button" class="icon-btn" id="undo" aria-label="Undo annotation change" title="Undo the last annotation change (Ctrl+Z)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5L3 9l4 4M3 9h9a5 5 0 010 10h-2"/></svg></button>
+          <button type="button" class="icon-btn" id="undo" aria-label="Undo annotation or crop change" title="Undo the last annotation or crop change (Ctrl+Z)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5L3 9l4 4M3 9h9a5 5 0 010 10h-2"/></svg></button>
         </div>
 
         <div class="canvas-wrap" id="canvas-wrap">
           <canvas id="preview" role="img" tabindex="0" aria-label="Preview of the image you are making" aria-describedby="kbd-help"></canvas>
           <div class="handle" id="handle" hidden></div>
-          <p id="kbd-help" class="visually-hidden">With a screenshot loaded and a tool picked, press Enter to add an annotation. Arrow keys move the selected annotation (the newest, or the one picked in the Annotations list), Shift moves it further, Alt with arrow keys resizes it, Delete removes it. A new text label moves focus to its text box; type the words, then press Enter to come back. With the Pointer tool, drag the round handle on the selected annotation to resize it, or pick a colour to recolour it.</p>
+          <p id="kbd-help" class="visually-hidden">With a screenshot loaded and a tool picked, press Enter to add an annotation. Arrow keys move the selected annotation (the newest, or the one picked in the Annotations list), Shift moves it further, Alt with arrow keys resizes it, Delete removes it. A new text label moves focus to its text box; type the words, then press Enter to come back. With the Pointer tool, drag the round handle on the selected annotation to resize it, or pick a colour to recolour it. With the Crop tool, the whole image shows with the crop outlined: drag over the part to keep, or use the arrow keys to move the crop, Alt with arrow keys to resize it and Delete to show the whole image again.</p>
           <div class="empty" id="empty" hidden>
             <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="10" width="36" height="28" rx="5"/><path d="M6 31l10-9 9 8 6-5 11 9"/><circle cx="32" cy="19" r="3"/></svg>
             <h2>Add a screenshot</h2>
@@ -70,6 +71,10 @@
           <h2>Screenshot</h2>
           <div class="row">
             <button type="button" class="btn ghost wide" data-pick="shot" id="replace-shot">Choose image</button>
+          </div>
+          <div class="crop-row" id="crop-row" hidden>
+            <p class="hint" id="crop-info"></p>
+            <button type="button" class="btn ghost wide" id="reset-crop">Show whole image</button>
           </div>
           <fieldset class="seg wide">
             <legend>Frame</legend>

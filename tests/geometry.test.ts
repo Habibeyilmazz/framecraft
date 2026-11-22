@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultDesign } from '../src/design';
-import { codeMetrics, fitText, labelFont, labelSize, layoutCard, layoutScene, shotDisplaySize } from '../src/layout';
+import { codeMetrics, fitText, labelFont, labelSize, layoutCard, layoutScene, shotDisplaySize, wholeImageBox } from '../src/layout';
 import { applyH, homography, invert3, projectCard, type Pt } from '../src/perspective';
 import { contrastInk, gradientLine, meshBlobs } from '../src/presets';
 
@@ -50,6 +50,20 @@ describe('layout', () => {
     expect(shotDisplaySize(300, 200)).toEqual({ w: 300, h: 200 });
     expect(shotDisplaySize(12000, 1)).toEqual({ w: 1400, h: 1 });
     expect(shotDisplaySize(1, 12000)).toEqual({ w: 1, h: 1000 });
+  });
+
+  it('places the whole image so that its crop fills the content box', () => {
+    const c = { x: 10, y: 50, w: 400, h: 200 };
+    expect(wholeImageBox(c, { x: 0, y: 0, w: 1, h: 1 })).toEqual(c);
+    // the right half, middle third: the image is twice as wide and three times as tall, shifted left and up
+    const b = wholeImageBox(c, { x: 0.5, y: 1 / 3, w: 0.5, h: 1 / 3 });
+    expect(b.w).toBeCloseTo(800);
+    expect(b.h).toBeCloseTo(600);
+    expect(b.x).toBeCloseTo(10 - 400);
+    expect(b.y).toBeCloseTo(50 - 200);
+    // the crop's corners land on the content box's corners
+    expect(b.x + 0.5 * b.w).toBeCloseTo(c.x);
+    expect(b.y + (2 / 3) * b.h).toBeCloseTo(c.y + c.h);
   });
 
   it('sizes code from the longest line and the line count', () => {

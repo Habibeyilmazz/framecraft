@@ -612,6 +612,13 @@ input[type='color'] {
 .hint:empty {
   display: none;
 }
+.crop-row {
+  display: grid;
+  gap: 8px;
+}
+.crop-row .hint {
+  margin: 0;
+}
 
 /* ---------- swatches ---------- */
 

@@ -1,4 +1,4 @@
-import type { Design } from './design';
+import type { Crop, Design } from './design';
 import { projectCard } from './perspective';
 import { SIZE_PRESETS } from './presets';
 
@@ -45,6 +45,13 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 export function shotDisplaySize(iw: number, ih: number): { w: number; h: number } {
   const s = Math.min(1, 1400 / iw, 1000 / ih);
   return { w: Math.max(1, Math.round(iw * s)), h: Math.max(1, Math.round(ih * s)) };
+}
+
+/** Where the whole image sits when its crop fills the box c (it reaches outside c unless the crop is the whole image). */
+export function wholeImageBox(c: Box, crop: Crop): Box {
+  const w = c.w / crop.w;
+  const h = c.h / crop.h;
+  return { x: c.x - crop.x * w, y: c.y - crop.y * h, w, h };
 }
 
 // A text label is a one-line pill: half an em of padding each side, 1.6 em tall.
