@@ -279,8 +279,9 @@ function placeHandle() {
   const el = $('#handle');
   const note = current();
   const hp = rendered && design.mode === 'shot' && shot && !tool() && note && handleOf(note);
-  el.hidden = !hp;
-  if (!hp) return;
+  // a handle outside the crop would float over the frame or the background
+  el.hidden = !hp || !inCrop(hp);
+  if (!hp || el.hidden) return;
   const [x, y] = rendered!.toScene(...hp);
   const k = canvas.clientWidth / rendered!.scene.W;
   el.style.left = `${canvas.offsetLeft + canvas.clientLeft + x * k}px`;
@@ -290,7 +291,7 @@ function placeHandle() {
 /** Undo history: the annotations and crop as they were before each change (as JSON, so later edits cannot alter them). */
 const past: string[] = [];
 const snapshot = () => JSON.stringify([design.notes, design.crop]);
-let snapNow = '';
+let snapNow = snapshot();
 
 let urlTimer = 0;
 function commit(change?: () => void) {
@@ -403,7 +404,7 @@ function noteAt(p: [number, number]): Note | undefined {
 function handleAt(p: [number, number], reach = 10): Note | undefined {
   const note = current();
   const hp = note && rendered && handleOf(note);
-  if (!hp) return;
+  if (!hp || !inCrop(hp)) return;
   const { w, h } = rendered!.whole;
   return Math.hypot((p[0] - hp[0]) * w, (p[1] - hp[1]) * h) <= screenPx(reach) ? note : undefined;
 }
@@ -421,6 +422,8 @@ const intoCrop = ([u, v]: [number, number]): [number, number] => {
   const { x, y, w, h } = design.crop;
   return [Math.min(x + w, Math.max(x, u)), Math.min(y + h, Math.max(y, v))];
 };
+/** Whether a point in image coordinates is on the part of the image that shows. */
+const inCrop = (p: [number, number]) => intoCrop(p).every((v, i) => v === p[i]);
 
 // ---------- text labels ----------
 
@@ -491,7 +494,7 @@ canvas.addEventListener('pointerdown', (e) => {
   }
   if (!t) {
     const handle = handleAt(p, e.pointerType === 'touch' ? 22 : 10); // fingers are less precise
-    const note = handle ?? noteAt(p);
+    const note = handle ?? (inCrop(p) ? noteAt(p) : undefined); // hidden annotations outside the crop are not grabbed
     if (!note) return;
     selected = note;
     drag = { note, orig: { ...note }, sx: p[0], sy: p[1], resize: !!handle };
@@ -499,7 +502,7 @@ canvas.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     return renderNotesList();
   }
-  if (intoCrop(p).some((v, i) => v !== p[i])) return; // outside the part of the image that shows
+  if (!inCrop(p)) return;
   const full = noteLimit(design.notes, t);
   if (full) return toast(full);
   const [x, y] = p;
@@ -533,7 +536,7 @@ canvas.addEventListener('pointermove', (e) => {
   }
   const pointing = !draft && !tool() && design.mode === 'shot';
   if (pointing && handleAt(p)) canvas.dataset.grab = 'resize';
-  else canvas.toggleAttribute('data-grab', pointing && !!noteAt(p));
+  else canvas.toggleAttribute('data-grab', pointing && inCrop(p) && !!noteAt(p));
   if (!draft) return;
   const [x, y] = intoCrop(p);
   const n = draft.note;
