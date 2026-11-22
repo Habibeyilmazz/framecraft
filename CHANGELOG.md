@@ -31,7 +31,9 @@ All notable changes to this project are documented here. The format follows
   control characters (PNG and SVG export, the SVG stays clean), a 20 000-character line and 2000 lines (PNG export
   is refused with a message saying why), empty, truncated and 1 x 1 PNGs, 4000 x 2 and 2 x 4000 images, broken, empty and
   300 000-character share links, junk in stored templates, odd custom sizes (0, -5, 1e3, 99999, 640.5, empty). No
-  request goes to another host. Offline use was not tried. The app has no dates, so no time zone cases.
+  request goes to another host. Offline after the page loaded (Playwright `setOffline`): a screenshot, a label and a
+  PNG export all work; letters outside basic Latin (such as ğ or Greek) then draw in a fallback font, because those
+  font files load on first use and could not. The app has no dates, so no time zone cases.
 - Round 13, not done: SVG files cannot be used as a screenshot (Chromium's `createImageBitmap` refuses them; the
   toast says the file could not be read). No aspect-ratio lock for the crop (a feature, out of this round's lens).
   Codex was out of quota, so the review was by hand. Firefox and WebKit ran only in CI: the first CI run showed that
