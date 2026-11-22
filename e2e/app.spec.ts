@@ -142,6 +142,20 @@ test('blocks SVG export while the card is tilted', async ({ page }) => {
   await expect(page.locator('#toast')).toHaveText(/SVG cannot show tilt/);
 });
 
+test('export buttons look unavailable until there is a screenshot, and say why on click', async ({ page }) => {
+  const png = page.getByRole('button', { name: 'Download PNG' });
+  const copy = page.getByRole('button', { name: 'Copy image' });
+  await expect(png).toHaveAttribute('aria-disabled', 'false'); // the code card can always export
+  await page.getByRole('radio', { name: 'Screenshot', exact: true }).check();
+  await expect(png).toHaveAttribute('aria-disabled', 'true');
+  await expect(copy).toHaveAttribute('aria-disabled', 'true');
+  await png.click({ force: true }); // aria-disabled still explains itself on click
+  await expect(page.locator('#toast')).toHaveText('Add a screenshot first.');
+  await page.setInputFiles('#file', SAMPLE);
+  await expect(png).toHaveAttribute('aria-disabled', 'false');
+  await expect(copy).toHaveAttribute('aria-disabled', 'false');
+});
+
 test('frames a screenshot and redacts a region with pixelate', async ({ page }) => {
   await page.getByLabel('Padding').fill('0');
   await loadShot(page);

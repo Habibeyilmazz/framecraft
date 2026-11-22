@@ -120,6 +120,12 @@ function syncControls() {
   svgBtn.title = tilted ? 'SVG cannot show tilt. Reset tilt to export SVG.' : 'Download as SVG with selectable text';
   $('#detected').textContent = design.mode === 'code' && design.code.lang === 'auto' ? `Detected: ${LANGUAGES[codeHighlight().lang]?.label ?? 'plain text'}` : '';
   $('#replace-shot').textContent = shot ? 'Replace image' : 'Choose image';
+  // still clickable: the click explains why there is nothing to export yet
+  const empty = design.mode === 'shot' && !shot;
+  for (const b of $$('#copy-image, #export-png')) {
+    b.setAttribute('aria-disabled', String(empty));
+    b.title = empty ? 'Add a screenshot first' : '';
+  }
   renderNotesList();
 }
 
