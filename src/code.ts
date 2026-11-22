@@ -147,12 +147,17 @@ export interface Highlighted {
   lines: Token[][];
 }
 
+/** Auto-detection highlights the text once per language, so it only looks at this much of a long snippet. */
+export const DETECT_SAMPLE = 4000;
+
 /** Highlight code; lang 'auto' lets highlight.js guess from the registered languages. */
 export function highlight(code: string, lang: string): Highlighted {
   const text = code.replace(/\r\n?/g, '\n').replace(/\t/g, '  ').replace(/\s+$/, '');
   if (Object.hasOwn(LANGUAGES, lang)) return { lang, lines: htmlToLines(hljs.highlight(text, { language: lang, ignoreIllegals: true }).value) };
-  const res = hljs.highlightAuto(text);
-  return { lang: res.language ?? 'plaintext', lines: htmlToLines(res.value) };
+  const res = hljs.highlightAuto(text.slice(0, DETECT_SAMPLE));
+  if (text.length <= DETECT_SAMPLE) return { lang: res.language ?? 'plaintext', lines: htmlToLines(res.value) };
+  if (res.language) return highlight(text, res.language);
+  return { lang: 'plaintext', lines: text.split('\n').map((line) => (line ? [{ text: line, role: 'fg' }] : [])) };
 }
 
 /** Parse "3, 5-7" into a set of 1-based line numbers. Junk is ignored; ranges are capped to maxLine. */

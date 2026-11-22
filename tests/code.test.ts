@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CODE_THEMES, highlight, htmlToLines, parseLineRanges } from '../src/code';
+import { CODE_THEMES, DETECT_SAMPLE, highlight, htmlToLines, parseLineRanges } from '../src/code';
 
 describe('parseLineRanges', () => {
   it('reads single lines and ranges', () => {
@@ -53,6 +53,20 @@ describe('highlight', () => {
   });
   it('falls back to auto for an unknown language id', () => {
     expect(highlight('SELECT * FROM users WHERE id = 1;', 'klingon').lang).toBe('sql');
+  });
+  it('detects a long snippet from its start and still highlights all of it', () => {
+    const py = 'def add(a, b):\n    return a + b\n\n';
+    const src = py.repeat(Math.ceil((DETECT_SAMPLE * 3) / py.length)).trimEnd();
+    const out = highlight(src, 'auto');
+    expect(out.lang).toBe('python');
+    expect(out.lines.length).toBe(src.split('\n').length);
+    expect(out.lines.at(-1)!.some((t) => t.role === 'keyword')).toBe(true); // past the sample, still coloured
+  });
+  it('keeps a long snippet with no detectable language as plain lines', () => {
+    const src = 'zz\n\n'.repeat(DETECT_SAMPLE);
+    const out = highlight(src, 'auto');
+    expect(out.lang).toBe('plaintext');
+    expect(out.lines.map((l) => l.map((t) => t.text).join('')).join('\n')).toBe(src.trimEnd());
   });
   it('does not treat inherited object keys as languages', () => {
     for (const lang of ['constructor', 'toString', '__proto__']) expect(() => highlight('let a = 1;', lang)).not.toThrow();
