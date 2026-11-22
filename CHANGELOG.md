@@ -29,6 +29,11 @@ All notable changes to this project are documented here. The format follows
     found from CI timelines, since WebKit is not installed locally).
   - An image dropped outside the stage (on the settings panel or header) made the browser navigate to the file,
     losing the screenshot and its annotations. File drops are taken anywhere on the page; text still drops into fields.
+- After a Codex second-opinion review of this round: undo kept the selection on a discarded copy, so the next Delete
+  hit the newest annotation (the selection now follows the restored copy); Ctrl+Z in the middle of a drag removed the
+  annotation from under the pointer (undo now waits for the drag to end); a second finger with the Step tool still
+  placed a badge (non-primary pointers are ignored); past step 99 every new badge was another 99 (a share link keeps
+  at most 99, so a 100th is refused with a message). The first three have e2e tests, `nextStep` a unit test.
 - README: "works offline" overclaimed. With no service worker the page does not load offline; after loading it keeps
   working, except that a not-yet-fetched non-Latin code font falls back to a system font.
 

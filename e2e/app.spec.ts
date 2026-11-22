@@ -535,6 +535,32 @@ test('undo brings back a deleted annotation, and new steps never repeat a number
   await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveCount(0);
 });
 
+test('undo keeps the selected annotation selected, and waits while one is being dragged', async ({ page }) => {
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'Step', exact: true }).check();
+  await page.locator('#preview').focus();
+  await page.keyboard.press('Enter');
+  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Step 1', exact: true }).click();
+  await page.keyboard.press('ArrowRight');
+  await page.keyboard.press('ControlOrMeta+z');
+  // Delete still acts on Step 1, not on the newest
+  await page.keyboard.press('Delete');
+  await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveText(['Step 2']);
+
+  // Ctrl+Z in the middle of a drag does not pull the annotation out from under the pointer
+  await page.getByRole('radio', { name: 'Box', exact: true }).check();
+  const box = (await page.locator('#preview').boundingBox())!;
+  const at = (u: number, v: number) => [box.x + box.width * u, box.y + box.height * v] as const;
+  await page.mouse.move(...at(0.2, 0.2));
+  await page.mouse.down();
+  await page.mouse.move(...at(0.4, 0.4), { steps: 3 });
+  await page.keyboard.press('ControlOrMeta+z');
+  await page.mouse.move(...at(0.5, 0.5), { steps: 3 });
+  await page.mouse.up();
+  await expect(page.getByRole('button', { name: /^(Step|Box) \d+$/ })).toHaveText(['Step 2', 'Box 1']);
+});
+
 test('a label shrunk by long words grows back when they get shorter', async ({ page }) => {
   await loadShot(page);
   const box = (await page.locator('#preview').boundingBox())!;
@@ -599,6 +625,14 @@ test.describe('on a touch screen', () => {
     await expect(page.getByRole('button', { name: /^Box \d$/ })).toHaveText(['Box 1']);
     // the box follows the first finger only: it ends at (0.4, 0.4), not where the second finger went
     await expect.poll(async () => (await linkNotes(page)).map((n) => [n.w, n.h].map((v) => Math.round(v * 10) / 10))).toEqual([[0.2, 0.2]]);
+
+    // two fingers down at once with the Step tool place one badge
+    await page.getByRole('radio', { name: 'Step', exact: true }).check();
+    await touch('touchStart', [at(0.6, 0.2, 0)]);
+    await touch('touchStart', [at(0.6, 0.2, 0), at(0.8, 0.2, 1)]);
+    await touch('touchEnd', [at(0.8, 0.2, 1)]);
+    await touch('touchEnd', []);
+    await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveText(['Step 1']);
   });
 });
 

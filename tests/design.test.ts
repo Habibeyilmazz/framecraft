@@ -236,7 +236,7 @@ describe('nextStep', () => {
     expect(nextStep([step(3), { ...step(7), t: 'box' }])).toBe(4); // other annotations do not count
   });
 
-  it('stops at 99, the most a share link keeps', () => {
-    expect(nextStep([step(99)])).toBe(99);
+  it('goes past 99, so the caller can refuse a step a share link could not keep', () => {
+    expect(nextStep([step(99)])).toBe(100);
   });
 });

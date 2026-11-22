@@ -125,8 +125,11 @@ export function handleOf(n: Note): [number, number] | null {
   return n.t === 'arrow' ? [n.x2, n.y2] : [n.x + n.w, n.y + n.h];
 }
 
-/** Number for a new step badge: one past the highest, so deleting a step never leads to a repeat. 99 at most, as in a share link. */
-export const nextStep = (notes: Note[]) => Math.min(99, Math.max(0, ...notes.filter((n) => n.t === 'step').map((n) => n.n)) + 1);
+/** The highest step number a share link keeps. */
+export const MAX_STEP = 99;
+
+/** Number for a new step badge: one past the highest, so deleting a step never leads to a repeat. Callers refuse it past MAX_STEP. */
+export const nextStep = (notes: Note[]) => Math.max(0, ...notes.filter((n) => n.t === 'step').map((n) => n.n)) + 1;
 
 /** Radius of a step badge on content that is w px wide. */
 export const stepRadius = (w: number) => Math.max(10, w * 0.018);
@@ -186,7 +189,7 @@ function sanitizeNote(v: unknown): Note | null {
     y2: num(o.y2, 0, 1, 0),
     w: num(o.w, 0, 1, 0),
     h: num(o.h, 0, 1, 0),
-    n: int(o.n, 1, 99, 1),
+    n: int(o.n, 1, MAX_STEP, 1),
     c: color(o.c, '#ff4d3d'),
   };
   // labels are one line: control characters (newlines included) become spaces

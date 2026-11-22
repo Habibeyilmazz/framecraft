@@ -2,7 +2,7 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource-variable/instrument-sans';
 import './style.css';
 import { CODE_THEMES, highlight, LANGUAGES, type Highlighted } from './code';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_LABEL, moveNote, nextStep, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_LABEL, MAX_STEP, moveNote, nextStep, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
 import { labelFont, labelSize, layoutCard, layoutScene } from './layout';
 import { GRADIENTS, MESHES, NOTE_COLORS, SIZE_PRESETS } from './presets';
 import { checkExportSize, contentSize, measureLabel, MONO, render, SANS, toBlob, type Assets, type Img, type Rendered } from './render';
@@ -408,8 +408,8 @@ function focusLabelInput() {
 
 canvas.addEventListener('pointerdown', (e) => {
   const t = tool() as NoteKind | '';
-  // a right-click opens the menu, and a second finger must not start a second drawing
-  if (design.mode !== 'shot' || !shot || e.button !== 0 || draft || drag) return;
+  // a right-click opens the menu, and a second finger must not draw or place anything
+  if (design.mode !== 'shot' || !shot || e.button !== 0 || !e.isPrimary || draft || drag) return;
   const p = pointerToContent(e);
   if (!p) return;
   pointerId = e.pointerId;
@@ -424,6 +424,7 @@ canvas.addEventListener('pointerdown', (e) => {
     return renderNotesList();
   }
   if (p[0] < 0 || p[0] > 1 || p[1] < 0 || p[1] > 1) return;
+  if (t === 'step' && nextStep(design.notes) > MAX_STEP) return toast(`Steps go up to ${MAX_STEP}.`);
   const [x, y] = p;
   const base: Note = { t, x, y, x2: x, y2: y, w: 0, h: 0, n: 1, c: noteColor };
   if (t === 'text') base.s = 'Label';
@@ -493,6 +494,7 @@ canvas.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' || e.key === ' ') {
     e.preventDefault();
     if (!t) return toast('Pick a tool first, then press Enter to add it.');
+    if (t === 'step' && nextStep(design.notes) > MAX_STEP) return toast(`Steps go up to ${MAX_STEP}.`);
     const n: Note = { t, x: 0.35, y: 0.35, x2: 0.5, y2: 0.5, w: 0.3, h: 0.3, n: 1, c: noteColor };
     if (t === 'step') {
       n.x = n.y = 0.5;
@@ -520,9 +522,12 @@ canvas.addEventListener('keydown', (e) => {
 });
 
 function undoNote() {
-  if (design.mode !== 'shot' || !past.length) return;
+  // not mid-drag: the pointer would keep moving an annotation that is no longer in the design
+  if (design.mode !== 'shot' || !past.length || draft || drag) return;
+  const at = selected ? design.notes.indexOf(selected) : -1;
   notesNow = past.pop()!;
   design.notes = JSON.parse(notesNow);
+  selected = design.notes[at]; // the copies are new objects: keep the same one selected, so Delete still hits it
   commit();
 }
 
