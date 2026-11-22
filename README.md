@@ -14,7 +14,7 @@ The recording above is the real app, driven by [`scripts/demo-gif.mjs`](scripts/
 
 ## Quickstart
 
-Needs Node.js 22 or newer.
+Needs Node.js 22.12 or newer, on an even-numbered (LTS) line: the test runner (Vitest) does not support 23 or 25.
 
 ```sh
 git clone https://github.com/Habibeyilmazz/framecraft.git

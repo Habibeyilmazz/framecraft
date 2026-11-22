@@ -5,7 +5,7 @@ a change is usually a few files.
 
 ## Setup
 
-Needs Node.js 22 or newer.
+Needs Node.js 22.12 or newer, on an even-numbered (LTS) line: the test runner (Vitest) does not support 23 or 25.
 
 ```sh
 npm install

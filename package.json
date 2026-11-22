@@ -5,6 +5,9 @@
   "description": "Make polished images from screenshots and code snippets, entirely in the browser.",
   "license": "MIT",
   "type": "module",
+  "engines": {
+    "node": "^22.12.0 || ^24.0.0 || >=26.0.0"
+  },
   "scripts": {
     "dev": "vite --port 4210 --strictPort",
     "build": "vite build",
