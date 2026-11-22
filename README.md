@@ -33,6 +33,11 @@ npm run dev        # then open http://localhost:4210
 
 - Drop an image on the page, paste it with Ctrl+V / ⌘V, or pick a file (PNG, JPEG, WebP, GIF, AVIF).
 - Frames: none, browser window (with an editable address), macOS window (with a title), phone. Light or dark windows.
+- Crop: pick Crop and the whole image shows with the crop outlined; drag over the part to keep. From the keyboard,
+  arrow keys move the crop, Alt+arrow keys resize it and Delete shows the whole image again; so does
+  "Show whole image" in the sidebar. Annotations stay attached to the whole image, so a crop never moves or drops
+  one: a redaction outside the crop still covers its pixels if you widen the crop later. Undo covers crop changes,
+  and replacing the image clears the crop.
 - Annotations: arrows, boxes, numbered step badges, text labels, and three redactions: blur, pixelate and cover. Blur and pixelate
   rebuild the region from a tiny downscaled copy (cells of at least 8 image pixels) and clear the original pixels
   first, so the exported file does not contain what you covered, and overlapping redactions never bring covered
@@ -76,11 +81,11 @@ npm run dev        # then open http://localhost:4210
 - Export SVG for code cards: the code stays real text with the fonts embedded, so it is sharp at any size
   ([example](docs/code-card.svg)). SVG is not offered for tilted cards, because SVG has no perspective transform.
 - **Copy link** puts the whole design in the URL (compressed), so anyone who opens it gets the same look.
-  Screenshots and background images are never put in the link. Annotations are: they land on the first screenshot
-  added after opening the link (or reloading the page), and replacing that screenshot clears them. The address bar
+  Screenshots and background images are never put in the link. Annotations and the crop are: they land on the first
+  screenshot added after opening the link (or reloading the page), and replacing that screenshot clears them. The address bar
   holds the current design as you edit, including a code snippet, so the snippet ends up in your browser history
   like any other URL.
-- **Templates** save the look (not your image or code) in this browser's local storage.
+- **Templates** save the look (not your image, its crop and annotations, or your code) in this browser's local storage.
 
 ![Code mode in the editor](docs/screenshots/code-mode.png)
 

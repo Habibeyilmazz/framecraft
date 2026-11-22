@@ -5,6 +5,36 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Round 12 ("feature"): **crop a screenshot**. Used the app as a newcomer would, with a full-size 2200 x 1280
+  dashboard screenshot: there was no way to show only part of it, so every screenshot had to be cropped in another
+  tool first. That was the biggest gap for the screenshot half of the app (more than the roadmap items).
+  - A Crop tool in the toolbar. While it is picked, the preview shows the whole image with the image outside the crop
+    dimmed and the crop outlined (preview only, never exported; it follows tilt and the phone frame). Drag over the
+    part to keep; a click alone explains that with a toast. Keyboard: arrow keys move the crop, Alt+arrow keys resize
+    it, Shift for bigger steps, Delete shows the whole image. The sidebar shows "Cropped to W x H of W x H px." and a
+    "Show whole image" button while cropped.
+  - The crop is a new `crop` design field (`{x, y, w, h}`, 0..1 of the image). `sanitizeCrop` keeps it inside the
+    image and at least `MIN_CROP` (2%) a side; a bad one becomes the whole image. It travels in the share link like the
+    annotations (landing on the first image added) and is cleared, with them, when the image is replaced. Templates
+    do not store it and applying one keeps the current crop.
+  - Annotations stay in whole-image coordinates; only the view changes (`wholeImageBox` in `src/layout.ts`;
+    `Rendered.toContent`/`toScene` and the new `Rendered.whole` map to the whole image). So a crop never moves or
+    drops an annotation, and a redaction outside the crop still covers its pixels when the crop is widened later.
+    Line widths, step badges and new labels are sized by the part that shows, as before cropping. New annotations
+    are drawn and placed (mouse and keyboard) inside the crop.
+  - Undo covers crop changes as well as annotations (the button is now "Undo annotation or crop change").
+  - Tests: unit tests for `sanitizeCrop` (via `sanitize`), templates leaving the crop alone, `wholeImageBox`, and
+    `hitNote`'s new step-radius argument. One e2e test: a click is refused, a drag crops, the readout and the 1x PNG
+    are the crop's size, an arrow drawn on the cropped view lands on the right spot of the whole image, the PNG's
+    pixels match the same part of the source (mean difference 0.2 of 255; 6 with the crop not applied, checked), the
+    keyboard resizes and Delete resets, undo steps back, the crop survives a link, and replacing the image clears it.
+- Round 12, known limits: with the Pointer an annotation can still be dragged past the crop's edge, where it is
+  hidden (it stays in the Annotations list and the keyboard can move it back). There is no aspect-ratio lock for the
+  crop. A label placed right at the crop's edge can be partly cut off. `docs/` images were not regenerated; none
+  shows the Crop tool yet.
+
 ### Security
 
 - Round 11 ("security"). Probed the trust boundaries by running crafted inputs against the built app (Playwright
