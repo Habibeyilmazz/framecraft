@@ -619,3 +619,64 @@ test('a photo stored sideways (EXIF orientation) is shown upright', async ({ pag
   await page.getByLabel('Padding').fill('0');
   await expect(page.locator('#readout')).toHaveText(/^100 × 300 /);
 });
+
+test('main journey: frame a screenshot, cover a secret, caption it, download it, share the look', async ({ page, context, browserName }) => {
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await page.getByLabel('Padding').fill('0');
+  await drawn(page);
+  const box = (await page.locator('#preview').boundingBox())!;
+  const at = (u: number, v: number) => [box.x + box.width * u, box.y + box.height * v] as const;
+  await page.getByRole('radio', { name: 'Cover' }).check();
+  await page.getByRole('radio', { name: 'Colour #111111' }).check();
+  await page.mouse.move(...at(0.72, 0.76));
+  await page.mouse.down();
+  await page.mouse.move(...at(0.97, 0.87), { steps: 4 });
+  await page.mouse.up();
+  await page.getByRole('radio', { name: 'Arrow', exact: true }).check();
+  await page.mouse.move(...at(0.4, 0.4));
+  await page.mouse.down();
+  await page.mouse.move(...at(0.6, 0.6), { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByRole('button', { name: /^(Cover|Arrow) 1$/ })).toHaveText(['Cover 1', 'Arrow 1']);
+  await page.getByRole('textbox', { name: 'Text' }).fill('Deploys at a glance');
+  const content = await readout(page); // caption off: the content alone
+  await page.getByRole('radio', { name: '2x' }).check();
+  await drawn(page);
+  const scene = await readout(page);
+  expect(scene.w).toBe(content.w);
+  expect(scene.h).toBeGreaterThan(content.h); // the caption band
+
+  const dl = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download PNG' }).click();
+  const file = await dl;
+  expect(file.suggestedFilename()).toBe('framecraft-screenshot-auto@2x.png');
+  const png = await readFile((await file.path())!);
+  expect(pngSize(png)).toEqual({ w: scene.w * 2, h: scene.h * 2 });
+  // the downloaded file, not just the preview, has the secret under one solid colour
+  const secret = await page.evaluate(
+    async ([b64, h]) => {
+      const bmp = await createImageBitmap(new Blob([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))]));
+      const ctx = new OffscreenCanvas(bmp.width, bmp.height).getContext('2d')!;
+      ctx.drawImage(bmp, 0, 0);
+      const d = ctx.getImageData(0.76 * bmp.width, 0.79 * h * 2, 0.17 * bmp.width, 0.04 * h * 2).data;
+      const distinct = new Set<string>();
+      for (let i = 0; i < d.length; i += 4) distinct.add(`${d[i]},${d[i + 1]},${d[i + 2]}`);
+      return [...distinct];
+    },
+    [png.toString('base64'), content.h] as const,
+  );
+  expect(secret).toEqual(['17,17,17']);
+
+  // the share link carries the look and the annotations, never the image
+  if (browserName !== 'chromium') return; // only Chromium lets a test grant clipboard-read
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.getByRole('button', { name: 'Copy link' }).click();
+  await expect(page.locator('#toast')).toHaveText(/keeps the design, not the screenshot/);
+  const link = await page.evaluate(() => navigator.clipboard.readText());
+  const fresh = await context.newPage();
+  await fresh.goto(link);
+  await expect(fresh.getByRole('heading', { name: 'Add a screenshot' })).toBeVisible();
+  await expect(fresh.getByRole('textbox', { name: 'Text' })).toHaveValue('Deploys at a glance');
+  await expect(fresh.getByRole('radio', { name: 'None', exact: true }).first()).toBeChecked();
+});
