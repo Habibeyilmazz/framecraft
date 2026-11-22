@@ -259,12 +259,13 @@ test('an SVG file works as a screenshot, with or without a width and height', as
       return [...c.getContext('2d')!.getImageData(c.width / 2, c.height / 2, 1, 1).data];
     });
     expect([r > 180, g < 60, b < 60]).toEqual([true, true, true]);
-    // drawn 2000 px on the long side in the SVG's own shape, sized or not: the crop readout names the image size
+    // drawn 2000 px on the long side in the SVG's own shape, sized or not: the crop readout names the image size.
+    // Unsized, browsers give it a small default size, rounded (Chromium 267 x 150), so the height can be a few px off
     await expect(page.locator('#crop-info')).toBeHidden();
     await page.getByRole('radio', { name: 'Crop', exact: true }).check();
     await page.locator('#preview').focus();
     await page.keyboard.press('Alt+ArrowLeft');
-    await expect(page.locator('#crop-info')).toHaveText(/ of 2000 × 112[45] px\.$/);
+    await expect(page.locator('#crop-info')).toHaveText(/ of 2000 × 112\d px\.$/);
     // the canvas is not tainted, so a PNG still exports
     const dl = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Download PNG' }).click();

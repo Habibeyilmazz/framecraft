@@ -12,8 +12,8 @@ All notable changes to this project are documented here. The format follows
   - **SVG files were refused as a screenshot** (or a background image): `createImageBitmap` does not decode them.
     They now decode through an `<img>` (`decodeSvg` in `src/main.ts`), where an SVG runs no scripts and loads
     nothing, and are drawn 2000 px on the long side in their own shape, so they stay sharp on a 2x export. An SVG with
-    only a `viewBox` keeps its shape in Chromium; in a browser that gives it no size at all it would come out 2:1
-    (300 x 150). The test feeds an SVG with a `<script>` and an external `<image>`, checks neither ran nor loaded,
+    only a `viewBox` keeps its shape too, to within a few px: browsers give it a small rounded default size first
+    (2000 x 1124 in Chromium, 1127 in Firefox, 1128 in WebKit, for a 16:9 viewBox, seen in CI). The test feeds an SVG with a `<script>` and an external `<image>`, checks neither ran nor loaded,
     and checks the PNG still exports (the canvas is not tainted). Firefox and WebKit run it only in CI.
   - **Arrow keys moved a selected annotation out of the crop**, where it was hidden. Its corner (or, with Alt, its
     resize handle) now stops at the crop's edge, like a Pointer drag. One that is already outside, for example
