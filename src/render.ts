@@ -168,7 +168,7 @@ function drawWindowChrome(ctx: Ctx, d: Design, L: CardLayout) {
   ctx.fillRect(0, bar - 1, w, 1);
 }
 
-let redactCache: { img: Img; key: string; out: Img } | null = null;
+let redactCache: { img: Img; key: string; out: HTMLCanvasElement } | null = null;
 
 /**
  * Bake blur, pixelate and cover into a copy of the image, in image pixels. Each redaction samples the copy, so an
@@ -180,8 +180,9 @@ export function redact(img: Img, notes: Note[]): Img {
   if (!marks.length) return img;
   const key = JSON.stringify(marks);
   if (redactCache?.img === img && redactCache.key === key) return redactCache.out;
-  const out = document.createElement('canvas');
-  out.width = img.width;
+  // reuse the copy for the same image: dragging a redaction re-bakes every frame, and a fresh 12 MP canvas each time is slow
+  const out = redactCache?.img === img ? redactCache.out : document.createElement('canvas');
+  out.width = img.width; // also clears a reused canvas, so a transparent image shows no older redaction
   out.height = img.height;
   const ctx = out.getContext('2d')!;
   ctx.drawImage(img, 0, 0);
