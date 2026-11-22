@@ -34,6 +34,7 @@ npm run dev        # then open http://localhost:4210
   contain what you covered, and overlapping redactions never bring covered pixels back.
   Every annotation is listed in the sidebar with a Remove button; Ctrl+Z / ⌘Z undoes the last one.
 - With the Pointer tool, drag any annotation to move it (grab a box by its outline, a redaction anywhere inside).
+  The selected annotation shows a round handle (an arrow's tip, a box's bottom-right corner): drag it to resize.
 - Keyboard: Tab to the preview, pick a tool, press Enter to add an annotation, arrow keys to move it (Shift for bigger
   steps), Alt+arrow keys to resize it or move an arrow's tip, Delete to remove it. The keys act on the selected
   annotation: the newest one, the one you last dragged, or the one you pick by name in the sidebar list.
@@ -99,7 +100,6 @@ the built `dist/` has been checked served from a sub-folder, the way Pages serve
 
 Not built yet:
 
-- Resizing an annotation with the mouse after it is drawn (today: Alt+arrow keys on the selected one).
 - Text labels as an annotation.
 - SVG export for screenshot mode.
 - Custom output sizes and a custom gradient editor.

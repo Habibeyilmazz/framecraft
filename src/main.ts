@@ -2,7 +2,7 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource-variable/instrument-sans';
 import './style.css';
 import { CODE_THEMES, highlight, LANGUAGES, type Highlighted } from './code';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, hitNote, moveNote, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, moveNote, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
 import { layoutCard, layoutScene } from './layout';
 import { GRADIENTS, MESHES, NOTE_COLORS, SIZE_PRESETS } from './presets';
 import { checkExportSize, contentSize, MONO, render, SANS, toBlob, type Assets, type Img, type Rendered } from './render';
@@ -145,6 +145,7 @@ function renderNotesList() {
     pick.onclick = () => {
       selected = n;
       renderNotesList();
+      scheduleDraw();
       canvas.focus();
     };
     remove.setAttribute('aria-label', `Remove ${label}`);
@@ -170,6 +171,7 @@ function draw() {
   if (!size) {
     rendered = null;
     $('#readout').textContent = '';
+    placeHandle();
     return;
   }
   const scene = layoutScene(design, layoutCard(design, size));
@@ -184,6 +186,20 @@ function draw() {
   canvas.style.height = `${Math.round(scene.H * f)}px`;
   const s = design.scale;
   $('#readout').textContent = `${scene.W} × ${scene.H} · exports at ${s}x as ${scene.W * s} × ${scene.H * s} px`;
+  placeHandle();
+}
+
+/** Show a resize handle on the selected annotation while the Pointer tool is active. It is a DOM element, so exports never include it. */
+function placeHandle() {
+  const el = $('#handle');
+  const note = current();
+  const hp = rendered && design.mode === 'shot' && shot && !tool() && note && handleOf(note);
+  el.hidden = !hp;
+  if (!hp) return;
+  const [x, y] = rendered!.toScene(...hp);
+  const k = canvas.clientWidth / rendered!.scene.W;
+  el.style.left = `${canvas.offsetLeft + canvas.clientLeft + x * k}px`;
+  el.style.top = `${canvas.offsetTop + canvas.clientTop + y * k}px`;
 }
 
 let urlTimer = 0;
@@ -264,14 +280,25 @@ fileInput.addEventListener('change', async () => {
 
 const tool = () => document.querySelector<HTMLInputElement>('input[name="tool"]:checked')?.value ?? '';
 let draft: { note: Note; ox: number; oy: number } | null = null;
-let drag: { note: Note; orig: Note; sx: number; sy: number } | null = null;
+let drag: { note: Note; orig: Note; sx: number; sy: number; resize: boolean } | null = null;
+
+/** Content px that are about n screen px on the preview. */
+const screenPx = (n: number) => (rendered ? (n * rendered.scene.W) / canvas.getBoundingClientRect().width / rendered.scene.k : 0);
 
 /** The annotation under the pointer, grabbed within about 6 screen px. */
 function noteAt(p: [number, number]): Note | undefined {
   if (!rendered) return;
-  const { scene, card } = rendered;
-  const tol = (6 * scene.W) / canvas.getBoundingClientRect().width / scene.k;
-  return design.notes[hitNote(design.notes, p[0], p[1], card.content.w, card.content.h, tol)];
+  const { w, h } = rendered.card.content;
+  return design.notes[hitNote(design.notes, p[0], p[1], w, h, screenPx(6))];
+}
+
+/** The selected annotation, if the pointer is on its resize handle (drawn by placeHandle). */
+function handleAt(p: [number, number], reach = 10): Note | undefined {
+  const note = current();
+  const hp = note && rendered && handleOf(note);
+  if (!hp) return;
+  const { w, h } = rendered!.card.content;
+  return Math.hypot((p[0] - hp[0]) * w, (p[1] - hp[1]) * h) <= screenPx(reach) ? note : undefined;
 }
 
 function pointerToContent(e: PointerEvent): [number, number] | null {
@@ -289,10 +316,11 @@ canvas.addEventListener('pointerdown', (e) => {
   const p = pointerToContent(e);
   if (!p) return;
   if (!t) {
-    const note = noteAt(p);
+    const handle = handleAt(p, e.pointerType === 'touch' ? 22 : 10); // fingers are less precise
+    const note = handle ?? noteAt(p);
     if (!note) return;
     selected = note;
-    drag = { note, orig: { ...note }, sx: p[0], sy: p[1] };
+    drag = { note, orig: { ...note }, sx: p[0], sy: p[1], resize: !!handle };
     canvas.setPointerCapture(e.pointerId);
     e.preventDefault();
     return renderNotesList();
@@ -317,10 +345,12 @@ canvas.addEventListener('pointermove', (e) => {
   if (!p) return;
   if (drag) {
     Object.assign(drag.note, drag.orig);
-    moveNote(drag.note, p[0] - drag.sx, p[1] - drag.sy, false);
+    moveNote(drag.note, p[0] - drag.sx, p[1] - drag.sy, drag.resize);
     return scheduleDraw();
   }
-  canvas.toggleAttribute('data-grab', !draft && !tool() && design.mode === 'shot' && !!noteAt(p));
+  const pointing = !draft && !tool() && design.mode === 'shot';
+  if (pointing && handleAt(p)) canvas.dataset.grab = 'resize';
+  else canvas.toggleAttribute('data-grab', pointing && !!noteAt(p));
   if (!draft) return;
   const [x, y] = [clamp01(p[0]), clamp01(p[1])];
   const n = draft.note;
@@ -513,7 +543,10 @@ function wire() {
   document.addEventListener('change', (e) => {
     const el = e.target as HTMLInputElement;
     if (el.name === 'note-color') noteColor = el.value;
-    if (el.name === 'tool') canvas.dataset.tool = el.value;
+    if (el.name === 'tool') {
+      canvas.dataset.tool = el.value;
+      scheduleDraw(); // the resize handle shows only with the Pointer
+    }
   });
   $$('[data-pick]').forEach((b) =>
     b.addEventListener('click', () => {

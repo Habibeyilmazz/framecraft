@@ -49,7 +49,8 @@
 
         <div class="canvas-wrap" id="canvas-wrap">
           <canvas id="preview" role="img" tabindex="0" aria-label="Preview of the image you are making" aria-describedby="kbd-help"></canvas>
-          <p id="kbd-help" class="visually-hidden">With a screenshot loaded and a tool picked, press Enter to add an annotation. Arrow keys move the selected annotation (the newest, or the one picked in the Annotations list), Shift moves it further, Alt with arrow keys resizes it, Delete removes it.</p>
+          <div class="handle" id="handle" hidden></div>
+          <p id="kbd-help" class="visually-hidden">With a screenshot loaded and a tool picked, press Enter to add an annotation. Arrow keys move the selected annotation (the newest, or the one picked in the Annotations list), Shift moves it further, Alt with arrow keys resizes it, Delete removes it. With the Pointer tool, drag the round handle on the selected annotation to resize it.</p>
           <div class="empty" id="empty" hidden>
             <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="10" width="36" height="28" rx="5"/><path d="M6 31l10-9 9 8 6-5 11 9"/><circle cx="32" cy="19" r="3"/></svg>
             <h2>Add a screenshot</h2>

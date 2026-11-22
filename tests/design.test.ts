@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, hitNote, MAX_CODE, moveNote, sanitize, toTemplate, type Note } from '../src/design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_CODE, moveNote, sanitize, toTemplate, type Note } from '../src/design';
 
 describe('sanitize', () => {
   it('returns defaults for junk', () => {
@@ -133,6 +133,16 @@ describe('moveNote', () => {
     expect([n.w, n.h]).toEqual([0.01, 0.01]);
     moveNote(n, 5, 5, true);
     expect([n.w, n.h]).toEqual([0.6, 0.6]);
+  });
+
+  it('puts the resize handle on the point that resizing moves', () => {
+    for (const t of ['arrow', 'box', 'blur', 'pixel'] as const) {
+      const n = note(t);
+      const [hx, hy] = handleOf(n)!;
+      moveNote(n, 0.05, 0.1, true);
+      expect(handleOf(n)).toEqual([expect.closeTo(hx + 0.05), expect.closeTo(hy + 0.1)]);
+    }
+    expect(handleOf(note('step'))).toBeNull();
   });
 
   it('moves a whole arrow, or only its tip when resizing', () => {

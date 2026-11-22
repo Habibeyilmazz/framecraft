@@ -42,6 +42,8 @@ export interface Rendered {
   card: CardLayout;
   /** Map a point in output logical px to content-relative coordinates (0..1 inside the content). */
   toContent: (x: number, y: number) => [number, number];
+  /** The reverse of toContent. */
+  toScene: (u: number, v: number) => [number, number];
 }
 
 export function roundRect(ctx: Ctx | Path2D, x: number, y: number, w: number, h: number, r: number) {
@@ -478,7 +480,9 @@ export function render(d: Design, a: Assets, scale: number, target?: HTMLCanvasE
     const v = (py - m) / cs;
     return [(u - card.content.x) / card.content.w, (v - card.content.y) / card.content.h];
   };
-  return { canvas, scene, card, toContent };
+  const toScene = (u: number, v: number): [number, number] =>
+    applyH(H, [(card.content.x + u * card.content.w) * cs + m, (card.content.y + v * card.content.h) * cs + m]);
+  return { canvas, scene, card, toContent, toScene };
 }
 
 // Safari's canvas area cap is the smallest of the major browsers (about 16.7 megapixels on iOS, 268 on desktop Chrome);

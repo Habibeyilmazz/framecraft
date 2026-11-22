@@ -117,6 +117,12 @@ export function moveNote(n: Note, dx: number, dy: number, resize: boolean) {
   }
 }
 
+/** The point that resizes an annotation when dragged (what moveNote's resize moves): an arrow's tip, a box's bottom-right corner. Steps have none. */
+export function handleOf(n: Note): [number, number] | null {
+  if (n.t === 'step') return null;
+  return n.t === 'arrow' ? [n.x2, n.y2] : [n.x + n.w, n.y + n.h];
+}
+
 /** Radius of a step badge on content that is w px wide. */
 export const stepRadius = (w: number) => Math.max(10, w * 0.018);
 

@@ -387,6 +387,21 @@ legend {
 #preview[data-grab] {
   cursor: move;
 }
+#preview[data-grab='resize'] {
+  cursor: nwse-resize;
+}
+/* resize handle on the selected annotation; the canvas does the hit-testing */
+.handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--mat);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.7), 0 1px 4px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
 #preview[hidden] {
   display: none;
 }

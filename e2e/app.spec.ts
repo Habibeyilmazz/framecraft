@@ -310,3 +310,48 @@ test('the pointer drags any annotation, and the list picks which one the keyboar
   await expect(page.getByRole('button', { name: 'Step 1', exact: true })).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Box 1', exact: true })).toBeVisible();
 });
+
+test('the selected annotation has a handle that resizes it with the mouse', async ({ page }) => {
+  await page.getByLabel('Padding').fill('0');
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await drawn(page);
+  const box = (await page.locator('#preview').boundingBox())!;
+  const at = (u: number, v: number) => [box.x + box.width * u, box.y + box.height * v] as const;
+
+  await page.getByRole('radio', { name: 'Box', exact: true }).check();
+  await page.mouse.move(...at(0.2, 0.2));
+  await page.mouse.down();
+  await page.mouse.move(...at(0.4, 0.4), { steps: 4 });
+  await page.mouse.up();
+  const handle = page.locator('#handle');
+  await expect(handle).toBeHidden(); // only with the Pointer tool
+  await page.getByRole('radio', { name: 'Pointer' }).check();
+  await drawn(page);
+  await expect(handle).toBeVisible();
+  const centre = async () => {
+    const r = (await handle.boundingBox())!;
+    return [r.x + r.width / 2, r.y + r.height / 2];
+  };
+  const [hx, hy] = await centre();
+  expect(Math.abs(hx - at(0.4, 0.4)[0])).toBeLessThan(3);
+  expect(Math.abs(hy - at(0.4, 0.4)[1])).toBeLessThan(3);
+
+  await page.mouse.move(hx, hy);
+  await page.mouse.down();
+  await page.mouse.move(...at(0.7, 0.6), { steps: 6 });
+  await page.mouse.up();
+  await drawn(page);
+  const [nx, ny] = await centre();
+  expect(Math.abs(nx - at(0.7, 0.6)[0])).toBeLessThan(3);
+  expect(Math.abs(ny - at(0.7, 0.6)[1])).toBeLessThan(3);
+  // resized, not moved: the top-left corner stayed, so the outline still passes through it
+  const kept = await page.evaluate(() => {
+    const c = document.querySelector<HTMLCanvasElement>('#preview')!;
+    const d = c.getContext('2d')!.getImageData(0.2 * c.width - 3, 0.5 * c.height - 3, 6, 6).data;
+    let n = 0;
+    for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 110 && d[i + 2] < 110) n++;
+    return n;
+  });
+  expect(kept).toBeGreaterThan(3);
+});
