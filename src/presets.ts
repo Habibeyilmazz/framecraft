@@ -46,6 +46,7 @@ export const SIZE_PRESETS: Record<string, SizePreset> = {
   linkedin: { label: 'LinkedIn post', w: 1200, h: 627 },
   og: { label: 'Open Graph', w: 1200, h: 630 },
   square: { label: 'Square', w: 1080, h: 1080 },
+  custom: { label: 'Custom size', w: 0, h: 0 },
 };
 
 export const SHADOW_PRESETS: Record<string, { blur: number; y: number; alpha: number }> = {

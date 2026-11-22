@@ -107,7 +107,7 @@ export function captionBand(d: Design): number {
 export function layoutScene(d: Design, card: { w: number; h: number }): Scene {
   const p = d.padding;
   const band = captionBand(d);
-  const preset = SIZE_PRESETS[d.size];
+  const preset = d.size === 'custom' ? { w: d.width, h: d.height } : SIZE_PRESETS[d.size];
   const W = preset.w || Math.round(card.w + 2 * p);
   const H = preset.h || Math.round(card.h + 2 * p + band);
   // padding and caption can eat a whole preset; keep at least a sliver so the scale stays positive

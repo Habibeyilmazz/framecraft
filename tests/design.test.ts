@@ -34,6 +34,12 @@ describe('sanitize', () => {
     expect(d.code.fontSize).toBe(32);
   });
 
+  it('keeps a custom size whole and within 64..4096 px', () => {
+    expect(sanitize({ size: 'custom', width: 1000.4, height: 420 })).toMatchObject({ size: 'custom', width: 1000, height: 420 });
+    expect(sanitize({ width: 10, height: 1e9 })).toMatchObject({ width: 64, height: 4096 });
+    expect(sanitize({ width: '800', height: NaN })).toMatchObject({ width: 1280, height: 720 });
+  });
+
   it('truncates long strings and drops invalid notes', () => {
     const d = sanitize({
       code: { text: 'a'.repeat(MAX_CODE + 50) },

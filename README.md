@@ -67,7 +67,9 @@ npm run dev        # then open http://localhost:4210
 - Backgrounds: 10 gradients, 6 mesh gradients (shuffle for a new arrangement), solid colour, your own image, or transparent; optional grain.
 - Padding, corner radius, four shadow strengths, 3D tilt in two axes, and a caption above or below.
 - Output sizes: fit to content, GitHub social preview (1280 × 640), README banner (1280 × 480), X post (1600 × 900),
-  LinkedIn post (1200 × 627), Open Graph (1200 × 630), square (1080 × 1080).
+  LinkedIn post (1200 × 627), Open Graph (1200 × 630), square (1080 × 1080), or a custom width and height from 64 to
+  4096 px (for example 1000 × 420 for a DEV cover image). A custom size goes into share links, templates and the
+  file name (`framecraft-code-1000x420@2x.png`).
 - Export PNG at 1x, 2x or 3x, or copy the image straight to the clipboard. Exports over 16384 px on a side or
   120 megapixels are refused with a message instead of failing silently.
 - Export SVG for code cards: the code stays real text with the fonts embedded, so it is sharp at any size
@@ -148,7 +150,7 @@ Not built yet:
 
 - Multi-line text labels.
 - SVG export for screenshot mode.
-- Custom output sizes and a custom gradient editor.
+- A custom gradient editor.
 - More frames (iPad, Android, Windows window) and line wrapping for long code lines.
 - Diff-style added/removed line markers in code mode.
 

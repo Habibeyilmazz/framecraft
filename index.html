@@ -124,6 +124,10 @@
         <section class="group">
           <h2>Layout</h2>
           <div class="field"><label for="size">Size</label><select data-bind="size" id="size"></select></div>
+          <div class="pair" data-show="size:custom">
+            <label class="field"><span>Width (px)</span><input type="number" data-bind="width" min="64" max="4096" step="1" required inputmode="numeric" /></label>
+            <label class="field"><span>Height (px)</span><input type="number" data-bind="height" min="64" max="4096" step="1" required inputmode="numeric" /></label>
+          </div>
           <div class="field range"><span><label for="r-padding">Padding</label><output for="r-padding" data-out="padding"></output></span><input id="r-padding" type="range" min="0" max="240" step="4" data-bind="padding" /></div>
           <div class="field range" data-show="frame:none,browser,mac|mode:code"><span><label for="r-radius">Corner radius</label><output for="r-radius" data-out="radius"></output></span><input id="r-radius" type="range" min="0" max="48" step="1" data-bind="radius" /></div>
           <fieldset class="seg wide">

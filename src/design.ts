@@ -5,7 +5,7 @@ export const MODES = ['code', 'shot'] as const;
 export const FRAMES = ['none', 'browser', 'mac', 'phone'] as const;
 export const BG_KINDS = ['gradient', 'mesh', 'solid', 'image', 'none'] as const;
 export const SHADOWS = ['none', 'soft', 'medium', 'large'] as const;
-export const SIZES = ['auto', 'github', 'readme', 'x', 'linkedin', 'og', 'square'] as const;
+export const SIZES = ['auto', 'github', 'readme', 'x', 'linkedin', 'og', 'square', 'custom'] as const;
 export const NOTE_KINDS = ['arrow', 'box', 'blur', 'pixel', 'cover', 'step', 'text'] as const;
 export const CAPTION_POS = ['bottom', 'top'] as const;
 export const THEMES = ['framecraft', 'one-dark', 'dracula', 'nord', 'github-dark', 'github-light', 'solarized-light'] as const;
@@ -32,6 +32,9 @@ export interface Design {
   v: 1;
   mode: (typeof MODES)[number];
   size: (typeof SIZES)[number];
+  /** Output size in px when size is 'custom'. */
+  width: number;
+  height: number;
   scale: number;
   bg: { kind: (typeof BG_KINDS)[number]; color: string; gradient: number; mesh: number; seed: number; noise: number };
   padding: number;
@@ -72,6 +75,8 @@ export function defaultDesign(): Design {
     v: 1,
     mode: 'code',
     size: 'auto',
+    width: 1280,
+    height: 720,
     scale: 2,
     bg: { kind: 'mesh', color: '#2f5a4c', gradient: 3, mesh: 3, seed: 7, noise: 0.25 },
     padding: 72,
@@ -177,6 +182,9 @@ function pick<T extends string>(v: unknown, list: readonly T[], def: T): T {
 export const MAX_CODE = 20000;
 export const MAX_NOTES = 200;
 export const MAX_LABEL = 80;
+/** Limits of a custom output size, in px at 1x (3x of the largest stays under the 16384 px export limit). */
+export const MIN_SIDE = 64;
+export const MAX_SIDE = 4096;
 
 function sanitizeNote(v: unknown): Note | null {
   const o = obj(v);
@@ -208,6 +216,8 @@ export function sanitize(input: unknown): Design {
     v: 1,
     mode: pick(o.mode, MODES, d.mode),
     size: pick(o.size, SIZES, d.size),
+    width: int(o.width, MIN_SIDE, MAX_SIDE, d.width),
+    height: int(o.height, MIN_SIDE, MAX_SIDE, d.height),
     scale: int(o.scale, 1, 3, d.scale),
     bg: {
       kind: pick(bg.kind, BG_KINDS, d.bg.kind),

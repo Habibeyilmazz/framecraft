@@ -274,6 +274,8 @@ function onInput(e: Event) {
   const cur = getPath(path);
   let v: unknown = el.value;
   if (el.type === 'checkbox') v = el.checked;
+  // a size being typed (empty, 6, 60...) waits until it is a whole number in range; leaving the field restores the last good one
+  else if (el.type === 'number' && !el.validity.valid) return;
   else if (typeof cur === 'number') v = Number(el.value);
   setPath(path, v);
   commit();
@@ -547,7 +549,8 @@ function undoNote() {
 // ---------- export ----------
 
 function exportName(ext: string) {
-  return `framecraft-${design.mode === 'code' ? 'code' : 'screenshot'}-${design.size}@${design.scale}x.${ext}`;
+  const size = design.size === 'custom' ? `${design.width}x${design.height}` : design.size;
+  return `framecraft-${design.mode === 'code' ? 'code' : 'screenshot'}-${size}@${design.scale}x.${ext}`;
 }
 
 function download(blob: Blob, name: string) {
@@ -668,6 +671,10 @@ function renderTemplates() {
 
 function wire() {
   document.addEventListener('input', onInput);
+  document.addEventListener('focusout', (e) => {
+    const el = e.target as HTMLInputElement;
+    if (el.type === 'number' && el.dataset.bind) el.value = String(getPath(el.dataset.bind));
+  });
   document.addEventListener('change', (e) => {
     const el = e.target as HTMLInputElement;
     if (el.name === 'note-color') {
@@ -718,7 +725,7 @@ function wire() {
   });
 
   document.addEventListener('keydown', (e) => {
-    const typing = (e.target as HTMLElement).closest('input[type="text"], textarea, select');
+    const typing = (e.target as HTMLElement).closest('input[type="text"], input[type="number"], textarea, select');
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z' && !typing) {
       e.preventDefault();
       undoNote();

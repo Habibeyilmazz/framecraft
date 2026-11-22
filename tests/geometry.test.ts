@@ -85,6 +85,18 @@ describe('layout', () => {
     close(s.k, 0.5); // width-bound: (1280 - 100) / 2360
   });
 
+  it('uses the design width and height for a custom size, and ignores them otherwise', () => {
+    const d = defaultDesign();
+    d.padding = 20;
+    d.width = 1000;
+    d.height = 420;
+    expect(layoutScene(d, { w: 400, h: 300 })).toMatchObject({ W: 440, H: 340 });
+    d.size = 'custom';
+    const s = layoutScene(d, { w: 400, h: 300 });
+    expect(s).toMatchObject({ W: 1000, H: 420 });
+    close(s.k, 380 / 300); // height-bound: (420 - 40) / 300
+  });
+
   it('leaves room for a caption and shrinks a tilted card to fit', () => {
     const d = defaultDesign();
     d.padding = 40;

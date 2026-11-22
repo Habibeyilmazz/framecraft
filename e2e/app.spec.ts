@@ -87,6 +87,37 @@ test('downloads a PNG at the chosen scale and size preset', async ({ page }) => 
   expect(pngSize(await readFile((await file.path())!))).toEqual({ w: 3840, h: 1920 });
 });
 
+test('a custom size sets the export size, waits for a valid number, and travels in the link', async ({ page }) => {
+  const width = page.getByRole('spinbutton', { name: 'Width (px)' });
+  const height = page.getByRole('spinbutton', { name: 'Height (px)' });
+  await expect(width).toBeHidden();
+  await page.getByLabel('Size', { exact: true }).selectOption('custom');
+  await width.fill('1000');
+  await height.fill('420');
+  await expect(page.locator('#readout')).toContainText('1000 × 420 · exports at 2x as 2000 × 840 px');
+
+  // half-typed or out-of-range numbers leave the size alone; leaving the field shows the size in use again
+  await width.fill('');
+  await width.pressSequentially('9');
+  await expect(page.locator('#readout')).toContainText('1000 × 420');
+  await width.fill('99999');
+  await width.blur();
+  await expect(width).toHaveValue('1000');
+  await expect(page.locator('#readout')).toContainText('1000 × 420');
+
+  const dl = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Download PNG' }).click();
+  const file = await dl;
+  expect(file.suggestedFilename()).toBe('framecraft-code-1000x420@2x.png');
+  expect(pngSize(await readFile((await file.path())!))).toEqual({ w: 2000, h: 840 });
+
+  await page.waitForTimeout(400); // URL updates are debounced
+  const fresh = await page.context().newPage();
+  await fresh.goto(page.url());
+  await expect(fresh.getByRole('spinbutton', { name: 'Height (px)' })).toHaveValue('420');
+  await expect(fresh.locator('#readout')).toContainText('1000 × 420');
+});
+
 test('fit-content export matches the readout', async ({ page }) => {
   await page.getByRole('radio', { name: '1x' }).check();
   const size = await readout(page);
