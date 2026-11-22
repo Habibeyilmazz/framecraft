@@ -143,7 +143,7 @@ function renderNotesList() {
     li.querySelector<HTMLElement>('.dot')!.style.background = n.c;
     const label =
       n.t === 'step' ? `Step ${n.n}`
-      : n.t === 'text' ? `Text “${(n.s ?? '').slice(0, 24)}”`
+      : n.t === 'text' ? `Text “${[...(n.s ?? '')].slice(0, 24).join('')}”`
       : `${names[n.t]} ${design.notes.slice(0, i + 1).filter((m) => m.t === n.t).length}`;
     const [pick, remove] = li.querySelectorAll('button');
     pick.textContent = label;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultDesign } from '../src/design';
-import { codeMetrics, labelFont, labelSize, layoutCard, layoutScene, shotDisplaySize } from '../src/layout';
+import { codeMetrics, fitText, labelFont, labelSize, layoutCard, layoutScene, shotDisplaySize } from '../src/layout';
 import { applyH, homography, invert3, projectCard, type Pt } from '../src/perspective';
 import { contrastInk, gradientLine, meshBlobs } from '../src/presets';
 
@@ -149,5 +149,25 @@ describe('presets', () => {
     expect(contrastInk('#3b82f6')).toBe('#111111'); // black really is the higher contrast here
     expect(contrastInk('#1d4ed8')).toBe('#ffffff');
     expect(contrastInk('#000000')).toBe('#ffffff');
+  });
+});
+
+describe('fitText', () => {
+  const units = (s: string) => s.length * 5; // a UTF-16 code unit is 5 px wide, so an emoji is 10
+
+  it('leaves text that fits alone', () => {
+    expect(fitText('example.com', 100, units)).toBe('example.com');
+  });
+
+  it('cuts long text and adds an ellipsis that still fits', () => {
+    expect(fitText('abcdefghij', 30, units)).toBe('abcde…');
+    expect(fitText('abcdefghij', 1, units)).toBe('a…'); // never empty
+  });
+
+  it('never cuts an emoji or a joined emoji sequence in half', () => {
+    // 3 rockets and a half fit in 42 px; the half must go
+    expect(fitText('🚀'.repeat(10), 42, units)).toBe('🚀🚀🚀…');
+    const family = '👩‍👩‍👧';
+    expect(fitText(family + family, 50, units)).toBe(family + '…');
   });
 });

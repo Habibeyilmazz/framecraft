@@ -1,6 +1,6 @@
 import { CODE_THEMES, parseLineRanges, type Highlighted } from './code';
 import { stepRadius, type Design, type Note } from './design';
-import { codeMetrics, labelFont, layoutCard, layoutScene, shotDisplaySize, type Box, type CardLayout, type CodeMetrics, type Scene } from './layout';
+import { codeMetrics, fitText, labelFont, layoutCard, layoutScene, shotDisplaySize, type Box, type CardLayout, type CodeMetrics, type Scene } from './layout';
 import { applyH, homography, invert3, projectCard, type Mat3, type ProjPt } from './perspective';
 import { contrastInk, GRADIENTS, gradientLine, MESHES, meshBlobs, SHADOW_PRESETS } from './presets';
 
@@ -139,12 +139,7 @@ function trafficLights(ctx: Ctx, bar: number) {
   });
 }
 
-function fitText(ctx: Ctx, text: string, maxW: number): string {
-  if (ctx.measureText(text).width <= maxW) return text;
-  let s = text;
-  while (s.length > 1 && ctx.measureText(s + '…').width > maxW) s = s.slice(0, -1);
-  return s + '…';
-}
+const fit = (ctx: Ctx, text: string, maxW: number) => fitText(text, maxW, (s) => ctx.measureText(s).width);
 
 function drawWindowChrome(ctx: Ctx, d: Design, L: CardLayout) {
   const dark = d.dark;
@@ -163,11 +158,11 @@ function drawWindowChrome(ctx: Ctx, d: Design, L: CardLayout) {
     ctx.fill();
     ctx.font = `500 ${bar * 0.3}px ${SANS}`;
     ctx.fillStyle = dark ? '#b9bcc4' : '#5d6168';
-    ctx.fillText(fitText(ctx, d.url, pw - ph), w / 2, bar / 2 + bar * 0.01);
+    ctx.fillText(fit(ctx, d.url, pw - ph), w / 2, bar / 2 + bar * 0.01);
   } else if (d.title) {
     ctx.font = `600 ${bar * 0.34}px ${SANS}`;
     ctx.fillStyle = dark ? '#c4c7ce' : '#4a4e55';
-    ctx.fillText(fitText(ctx, d.title, w - bar * 5), w / 2, bar / 2);
+    ctx.fillText(fit(ctx, d.title, w - bar * 5), w / 2, bar / 2);
   }
   ctx.fillStyle = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.08)';
   ctx.fillRect(0, bar - 1, w, 1);
@@ -354,7 +349,7 @@ function drawCodeCard(ctx: Ctx, d: Design, L: CardLayout, hl: Highlighted) {
       ctx.fillStyle = th.colors.comment;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(fitText(ctx, d.code.title, L.w - L.bar * 5), L.w / 2, L.bar / 2);
+      ctx.fillText(fit(ctx, d.code.title, L.w - L.bar * 5), L.w / 2, L.bar / 2);
     }
   }
   const top = L.content.y + m.padY;
@@ -498,7 +493,7 @@ export function render(d: Design, a: Assets, scale: number, target?: HTMLCanvasE
     ctx.fillStyle = d.caption.color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(fitText(ctx, d.caption.text, scene.W - d.padding), scene.W / 2, scene.captionY);
+    ctx.fillText(fit(ctx, d.caption.text, scene.W - d.padding), scene.W / 2, scene.captionY);
   }
 
   const H: Mat3 = homography(

@@ -57,6 +57,14 @@ export const labelFont = (w1: number, w: number, h: number) => Math.max(0, Math.
 /** The box a label needs at font size fs (the inverse of labelFont). */
 export const labelSize = (w1: number, fs: number) => ({ w: fs * (w1 + 2 * LABEL_PAD), h: fs * LABEL_H });
 
+/** text, cut short with an ellipsis so it measures at most maxW. It cuts between graphemes, never inside an emoji. */
+export function fitText(text: string, maxW: number, measure: (s: string) => number): string {
+  if (measure(text) <= maxW) return text;
+  const parts = Array.from(new Intl.Segmenter().segment(text), (g) => g.segment);
+  while (parts.length > 1 && measure(parts.join('') + '…') > maxW) parts.pop();
+  return parts.join('') + '…';
+}
+
 export function codeMetrics(lines: string[], fontSize: number, lineNumbers: boolean, measure: (s: string) => number): CodeMetrics {
   const fs = fontSize;
   const lh = Math.round(fs * 1.7);
