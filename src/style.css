@@ -121,6 +121,8 @@ textarea {
   height: 28px;
 }
 .wordmark {
+  margin: 0;
+  line-height: 1.2;
   font-weight: 650;
   font-size: 19px;
   letter-spacing: -0.02em;
