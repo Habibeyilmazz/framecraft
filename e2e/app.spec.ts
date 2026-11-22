@@ -188,7 +188,8 @@ test('templates save the look and apply it later', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Apply Tight gradient' })).toHaveCount(0);
 });
 
-test('copies the image to the clipboard', async ({ page, context }) => {
+test('copies the image to the clipboard', async ({ page, context, browserName }) => {
+  test.skip(browserName !== 'chromium', 'only Chromium lets a test grant clipboard-read');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await page.getByRole('button', { name: 'Copy image' }).click();
   await expect(page.locator('#toast')).toHaveText('Image copied. Paste it anywhere.');
