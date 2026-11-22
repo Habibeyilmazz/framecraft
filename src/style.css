@@ -323,13 +323,17 @@ legend {
   box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
   z-index: 2;
   max-width: calc(100% - 24px);
-  overflow-x: auto;
+  /* wrap on narrow screens instead of squashing the colour swatches */
+  flex-wrap: wrap;
+  justify-content: center;
 }
 .toolbar[hidden] {
   display: none;
 }
 .tools {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
   gap: 2px;
 }
 .tools label {

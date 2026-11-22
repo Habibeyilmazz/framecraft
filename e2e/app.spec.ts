@@ -202,6 +202,11 @@ test('works on a phone-sized screen without sideways scrolling', async ({ page }
   await page.reload();
   await expect(page.locator('#preview')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+  // the annotation toolbar wraps instead of squashing its colour swatches
+  await loadShot(page);
+  const swatches = await page.locator('#note-colors label').evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect().width));
+  expect(Math.min(...swatches)).toBeGreaterThanOrEqual(22);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });
 
 test('keyboard places a redaction that also wipes detail out of a tiny image', async ({ page }) => {
