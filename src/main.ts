@@ -351,8 +351,11 @@ async function loadImage(file: File): Promise<Img | null> {
   }
 }
 
+let shotLoads = 0;
 async function useShot(file: File) {
+  const load = ++shotLoads;
   const img = await loadImage(file);
+  if (load !== shotLoads) return; // another image was added while this one decoded: the last one wins
   if (!img) return;
   // the old image's annotations and crop do not belong on a new one; with no image yet, they came from a link or a reload
   const replacing = !!shot;

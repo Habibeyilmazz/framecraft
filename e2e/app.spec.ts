@@ -273,6 +273,37 @@ test('pasting text that also carries a picture into a text field pastes the text
   expect(await paste(false)).toBe(true); // a picture alone is still taken as the screenshot
 });
 
+test('of two images added in quick succession, the last one stays', async ({ page, browserName }) => {
+  test.skip(browserName === 'firefox', 'Firefox drops clipboardData from a synthetic paste event');
+  // the big one takes longer to decode, so it finished last and replaced the one added after it
+  const tiny = deflateSync(Buffer.from([0, 255, 0, 0]));
+  const chunk = (type: string, data: Buffer) => {
+    const len = Buffer.alloc(4);
+    len.writeUInt32BE(data.length);
+    const crc = Buffer.alloc(4);
+    crc.writeUInt32BE(crc32(Buffer.concat([Buffer.from(type), data])));
+    return Buffer.concat([len, Buffer.from(type), data, crc]);
+  };
+  const ihdr = Buffer.from([0, 0, 0, 1, 0, 0, 0, 1, 8, 2, 0, 0, 0]);
+  const onePx = Buffer.concat([Buffer.from('\x89PNG\r\n\x1a\n', 'binary'), chunk('IHDR', ihdr), chunk('IDAT', tiny), chunk('IEND', Buffer.alloc(0))]);
+  await page.evaluate(
+    ([big, small]) => {
+      for (const [b64, name] of [[big, 'big.png'], [small, 'small.png']]) {
+        const dt = new DataTransfer();
+        dt.items.add(new File([Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))], name, { type: 'image/png' }));
+        document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+      }
+    },
+    [(await readFile(SAMPLE)).toString('base64'), onePx.toString('base64')],
+  );
+  await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
+  await page.waitForTimeout(500); // long enough for the big one to finish decoding
+  await page.getByRole('radio', { name: 'Crop', exact: true }).check();
+  await page.locator('#preview').focus();
+  await page.keyboard.press('Alt+ArrowLeft');
+  await expect(page.locator('#crop-info')).toHaveText(/ of 1 × 1 px\.$/);
+});
+
 test('the URL carries the design and restores it', async ({ page }) => {
   await page.getByLabel('Padding').fill('120');
   await page.getByLabel('Theme').selectOption('nord');
