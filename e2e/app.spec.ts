@@ -682,10 +682,16 @@ test('main journey: frame a screenshot, cover a secret, caption it, download it,
 });
 
 test('the preview redraws when a font for new characters arrives', async ({ page }) => {
+  page.on('console', (m) => m.text().startsWith('DIAG') && console.log(m.text()));
   // Cyrillic glyphs come in their own font file, fetched on first use; make it arrive late
   await page.route('**/*cyrillic*', async (route) => {
     await new Promise((done) => setTimeout(done, 300));
     await route.continue();
+  });
+  await page.evaluate(() => {
+    const w = window as unknown as { done: number; ld: number[] };
+    w.done = 0;
+    document.fonts.addEventListener('loadingdone', () => w.done++);
   });
   await paste(page, 'Snippet', '// Привет, мир\nconst answer = 42;');
   // wait for that font file itself: in WebKit document.fonts.ready can resolve before the load starts
@@ -699,7 +705,16 @@ test('the preview redraws when a font for new characters arrives', async ({ page
     const shown = c.toDataURL();
     document.querySelector('textarea')!.dispatchEvent(new Event('input', { bubbles: true })); // force a redraw
     await frame();
-    return shown !== c.toDataURL();
+    const b = c.toDataURL();
+    document.querySelector('textarea')!.dispatchEvent(new Event('input', { bubbles: true }));
+    await frame();
+    const c2 = c.toDataURL();
+    await new Promise((d) => setTimeout(d, 1000));
+    document.querySelector('textarea')!.dispatchEvent(new Event('input', { bubbles: true }));
+    await frame();
+    const d2 = c.toDataURL();
+    console.log('DIAG', JSON.stringify({ done: (window as unknown as { done: number }).done, ab: shown === b, bc: b === c2, cd: c2 === d2 }));
+    return shown !== b;
   });
   expect(stale).toBe(false);
 });
