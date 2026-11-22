@@ -255,6 +255,24 @@ test('pasting an image switches to screenshot mode', async ({ page, browserName 
   await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
 });
 
+test('pasting text that also carries a picture into a text field pastes the text', async ({ page, browserName }) => {
+  test.skip(browserName === 'firefox', 'Firefox drops clipboardData from a synthetic paste event');
+  // spreadsheet and office apps put a picture of the copied cells on the clipboard next to the text
+  const paste = (withText: boolean) =>
+    page.evaluate((withText) => {
+      const dt = new DataTransfer();
+      if (withText) dt.setData('text/plain', 'SELECT 1;');
+      dt.items.add(new File([new Uint8Array(8)], 'cells.png', { type: 'image/png' }));
+      const e = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });
+      document.querySelector('textarea')!.dispatchEvent(e);
+      return e.defaultPrevented;
+    }, withText);
+  expect(await paste(true)).toBe(false); // left to the browser, which inserts the text
+  await page.waitForTimeout(100);
+  await expect(page.getByRole('radio', { name: 'Code', exact: true })).toBeChecked();
+  expect(await paste(false)).toBe(true); // a picture alone is still taken as the screenshot
+});
+
 test('the URL carries the design and restores it', async ({ page }) => {
   await page.getByLabel('Padding').fill('120');
   await page.getByLabel('Theme').selectOption('nord');
