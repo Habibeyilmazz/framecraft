@@ -123,12 +123,28 @@ function syncControls() {
   renderNotesList();
 }
 
+const NAMES: Record<NoteKind, string> = { arrow: 'Arrow', box: 'Box', blur: 'Blur', pixel: 'Pixelate', cover: 'Cover', step: 'Step', text: 'Text' };
+/** How the Annotations list names an annotation: "Box 2", "Step 3", "Text “Label”". */
+function noteName(n: Note) {
+  const i = design.notes.indexOf(n);
+  return n.t === 'step' ? `Step ${n.n}`
+    : n.t === 'text' ? `Text “${[...(n.s ?? '')].slice(0, 24).join('')}”`
+    : `${NAMES[n.t]} ${design.notes.slice(0, i + 1).filter((m) => m.t === n.t).length}`;
+}
+
+/** With the Pointer tool the swatches show (and set) the selected annotation's colour; with a drawing tool, the next one's. */
+function syncSwatches() {
+  const note = design.mode === 'shot' && shot && !tool() ? current() : undefined;
+  const c = note?.c ?? noteColor;
+  for (const el of $$<HTMLInputElement>('input[name="note-color"]')) el.checked = el.value === c;
+}
+
 function renderNotesList() {
   syncLabelInput();
+  syncSwatches();
   const host = $('#notes-list');
   host.replaceChildren();
   if (design.mode !== 'shot' || !design.notes.length) return;
-  const names: Record<NoteKind, string> = { arrow: 'Arrow', box: 'Box', blur: 'Blur', pixel: 'Pixelate', cover: 'Cover', step: 'Step', text: 'Text' };
   const head = document.createElement('div');
   head.className = 'notes-head';
   head.innerHTML = `<span>Annotations</span><button type="button" class="link-btn">Remove all</button>`;
@@ -141,10 +157,7 @@ function renderNotesList() {
     const li = document.createElement('li');
     li.innerHTML = `<i class="dot"></i><button type="button" class="link-btn note-name"></button><button type="button" class="link-btn">Remove</button>`;
     li.querySelector<HTMLElement>('.dot')!.style.background = n.c;
-    const label =
-      n.t === 'step' ? `Step ${n.n}`
-      : n.t === 'text' ? `Text “${[...(n.s ?? '')].slice(0, 24).join('')}”`
-      : `${names[n.t]} ${design.notes.slice(0, i + 1).filter((m) => m.t === n.t).length}`;
+    const label = noteName(n);
     const [pick, remove] = li.querySelectorAll('button');
     pick.textContent = label;
     pick.title = 'Select, then use the arrow keys on the preview';
@@ -657,10 +670,18 @@ function wire() {
   document.addEventListener('input', onInput);
   document.addEventListener('change', (e) => {
     const el = e.target as HTMLInputElement;
-    if (el.name === 'note-color') noteColor = el.value;
+    if (el.name === 'note-color') {
+      noteColor = el.value;
+      const note = design.mode === 'shot' && shot && !tool() ? current() : undefined;
+      if (note && note.c !== el.value) {
+        commit(() => (note.c = el.value));
+        toast(`${noteName(note)} recoloured.`);
+      }
+    }
     if (el.name === 'tool') {
       canvas.dataset.tool = el.value;
       syncLabelInput();
+      syncSwatches();
       scheduleDraw(); // the resize handle shows only with the Pointer
     }
   });

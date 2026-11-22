@@ -384,6 +384,62 @@ test('the pointer drags any annotation, and the list picks which one the keyboar
   await expect(page.getByRole('button', { name: 'Box 1', exact: true })).toBeVisible();
 });
 
+test('with the Pointer, the colour swatches recolour the selected annotation', async ({ page }) => {
+  await page.getByLabel('Padding').fill('0');
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await drawn(page);
+  const box = (await page.locator('#preview').boundingBox())!;
+  const at = (u: number, v: number) => [box.x + box.width * u, box.y + box.height * v] as const;
+  /** How many pixels in a small square around (u, v) are within a few levels of the colour [r, g, b]. */
+  const near = (u: number, v: number, rgb: number[]) =>
+    page.evaluate(([u, v, rgb]) => {
+      const c = document.querySelector<HTMLCanvasElement>('#preview')!;
+      const d = c.getContext('2d')!.getImageData(u * c.width - 8, v * c.height - 8, 16, 16).data;
+      let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (rgb.every((x, k) => Math.abs(d[i + k] - x) < 8)) n++;
+      return n;
+    }, [u, v, rgb] as const);
+  const swatch = (hex: string) => page.getByRole('radio', { name: `Colour ${hex}` });
+  const dot = (name: string) => page.getByRole('listitem').filter({ has: page.getByRole('button', { name, exact: true }) }).locator('.dot');
+
+  await page.getByRole('radio', { name: 'Step', exact: true }).check();
+  await page.mouse.click(...at(0.3, 0.3));
+  await page.mouse.click(...at(0.7, 0.3));
+  // with a drawing tool, a swatch only sets the colour of the next annotation
+  await swatch('#22c55e').check();
+  await expect(dot('Step 2')).toHaveCSS('background-color', 'rgb(255, 77, 61)');
+
+  await page.getByRole('radio', { name: 'Pointer' }).check();
+  await expect(swatch('#ff4d3d')).toBeChecked(); // shows the selected step's colour, not the next one's
+  await swatch('#3b82f6').check();
+  await expect(page.locator('#toast')).toHaveText('Step 2 recoloured.');
+  await expect(dot('Step 2')).toHaveCSS('background-color', 'rgb(59, 130, 246)');
+  await expect(dot('Step 1')).toHaveCSS('background-color', 'rgb(255, 77, 61)');
+  await drawn(page);
+  expect(await near(0.7, 0.3, [59, 130, 246])).toBeGreaterThan(20);
+  expect(await near(0.7, 0.3, [255, 77, 61])).toBe(0);
+  expect(await near(0.3, 0.3, [255, 77, 61])).toBeGreaterThan(20);
+
+  // selecting another annotation shows its colour; recolouring it works from the keyboard too
+  await page.getByRole('button', { name: 'Step 1', exact: true }).click();
+  await expect(swatch('#ff4d3d')).toBeChecked();
+  await swatch('#ff4d3d').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(dot('Step 1')).toHaveCSS('background-color', 'rgb(255, 176, 32)');
+
+  // undo puts the old colour back, and the swatches follow
+  await page.keyboard.press('Control+z');
+  await expect(dot('Step 1')).toHaveCSS('background-color', 'rgb(255, 77, 61)');
+  await expect(swatch('#ff4d3d')).toBeChecked();
+
+  // back on a drawing tool, the swatches show the colour for the next annotation again
+  await page.getByRole('radio', { name: 'Step', exact: true }).check();
+  await expect(swatch('#ffb020')).toBeChecked();
+  await page.mouse.click(...at(0.5, 0.7));
+  await expect(dot('Step 3')).toHaveCSS('background-color', 'rgb(255, 176, 32)');
+});
+
 test('the selected annotation has a handle that resizes it with the mouse', async ({ page }) => {
   await page.getByLabel('Padding').fill('0');
   await loadShot(page);

@@ -48,6 +48,8 @@ npm run dev        # then open http://localhost:4210
   resizing the pill scales the text to fit.
 - With the Pointer tool, drag any annotation to move it (grab a box by its outline, a redaction anywhere inside).
   The selected annotation shows a round handle (an arrow's tip, a box's bottom-right corner): drag it to resize.
+  Pick a colour while the Pointer is active to recolour the selected annotation (undo puts the old colour back);
+  with a drawing tool, the colour applies to the next annotation you add.
 - Keyboard: Tab to the preview, pick a tool, press Enter to add an annotation, arrow keys to move it (Shift for bigger
   steps), Alt+arrow keys to resize it or move an arrow's tip, Delete to remove it. The keys act on the selected
   annotation: the newest one, the one you last dragged, or the one you pick by name in the sidebar list.
@@ -144,7 +146,7 @@ source you can run or host yourself.
 
 Not built yet:
 
-- Recolouring an annotation after it is placed (pick the colour first), and multi-line text labels.
+- Multi-line text labels.
 - SVG export for screenshot mode.
 - Custom output sizes and a custom gradient editor.
 - More frames (iPad, Android, Windows window) and line wrapping for long code lines.
