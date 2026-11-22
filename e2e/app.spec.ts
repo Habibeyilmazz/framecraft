@@ -480,3 +480,20 @@ test('text labels: click to place, type the words, and edit them from the keyboa
   await page.getByRole('radio', { name: 'Arrow', exact: true }).check();
   await expect(words).toBeHidden();
 });
+
+test('a second label gets its own words in the text box, even while the box has focus', async ({ page }) => {
+  await loadShot(page);
+  const box = (await page.locator('#preview').boundingBox())!;
+  const words = page.getByLabel('Label text');
+  await page.getByRole('radio', { name: 'Text', exact: true }).check();
+  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.3);
+  await page.keyboard.type('First');
+  await expect(words).toBeFocused();
+  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.7);
+  await expect(words).toHaveValue('Label');
+  await page.keyboard.type('Second');
+  await expect(page.getByRole('button', { name: 'Text “First”', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Text “First”', exact: true }).click();
+  await page.getByRole('radio', { name: 'Pointer' }).check();
+  await expect(words).toHaveValue('First');
+});

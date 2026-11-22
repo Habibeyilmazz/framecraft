@@ -342,11 +342,14 @@ function placeLabel(n: Note, x: number, y: number) {
 }
 
 /** The label text box shows while a text label is selected, so typing edits its words. */
+let labelNote: Note | undefined;
 function syncLabelInput() {
   const n = current();
   const on = design.mode === 'shot' && !!shot && n?.t === 'text' && (tool() === '' || tool() === 'text');
   $('#label-field').hidden = !on;
-  if (on && document.activeElement !== labelInput) labelInput.value = n.s ?? '';
+  // leave the box alone while someone types in it, unless it now belongs to another label
+  if (on && (document.activeElement !== labelInput || labelNote !== n)) labelInput.value = n.s ?? '';
+  labelNote = n;
 }
 
 function editLabel() {
@@ -354,6 +357,7 @@ function editLabel() {
   if (n?.t !== 'text' || !rendered) return;
   const { w, h } = rendered.card.content;
   // keep the font size the label has now; the pill grows or shrinks around the new words
+  // shortcut: words wider than the image shrink the font, and shortening them does not grow it back (drag the handle)
   const fs = labelFont(measureLabel(n.s ?? ''), n.w * w, n.h * h);
   n.s = labelInput.value.slice(0, MAX_LABEL);
   fitLabel(n, fs);
@@ -623,7 +627,7 @@ function wire() {
   $('#undo').addEventListener('click', undoNote);
   labelInput.addEventListener('input', editLabel);
   labelInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' || e.key === 'Escape') {
+    if ((e.key === 'Enter' || e.key === 'Escape') && !e.isComposing) {
       e.preventDefault();
       canvas.focus();
     }

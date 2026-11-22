@@ -16,6 +16,10 @@ All notable changes to this project are documented here. The format follows
   caps the words at 80 characters and turns control characters into spaces. Pure sizing math is `labelFont` /
   `labelSize` in `src/layout.ts` (unit-tested); one e2e test covers click, type, widen, keyboard move, keyboard
   placement and delete. The README screenshot now shows a label (made by `scripts/readme-images.mjs`).
+- After a Codex second-opinion review of the label work: clicking a second label while the words box still had
+  focus left the box showing the first label's words (fixed, with an e2e test); Enter that confirms an IME
+  composition no longer jumps back to the preview. Known and left: words wider than the image shrink the font, and
+  shortening them again does not grow it back (drag the handle).
 
 ### Security
 
