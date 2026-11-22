@@ -868,3 +868,29 @@ test('step badges stop at 99 with a message instead of repeating 99', async ({ p
   await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.2);
   await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveCount(99);
 });
+
+test('axe finds no WCAG 2.2 AA problems, light on a desktop and dark on a phone, in both modes', async ({ page }) => {
+  // page.evaluate runs outside the page's Content-Security-Policy, so axe needs no script tag
+  const axeSource = await readFile('node_modules/axe-core/axe.min.js', 'utf8');
+  const tags = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa', 'best-practice'];
+  for (const [colorScheme, viewport] of [['light', { width: 1440, height: 900 }], ['dark', { width: 390, height: 844 }]] as const) {
+    await page.setViewportSize(viewport);
+    await page.emulateMedia({ colorScheme });
+    await page.goto('/');
+    await page.evaluate(axeSource);
+    for (const mode of ['code', 'shot']) {
+      if (mode === 'shot') {
+        await loadShot(page);
+        await page.getByRole('radio', { name: 'Text', exact: true }).check();
+        await page.locator('#preview').focus();
+        await page.keyboard.press('Enter'); // a label: the words box, a selected item in the list and the resize handle show
+      }
+      await drawn(page);
+      const found = await page.evaluate(async (runOnly) => {
+        const { violations } = await (window as unknown as { axe: { run: (c: Document, o: object) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe.run(document, { runOnly });
+        return violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(' ')).join(', ')}`);
+      }, tags);
+      expect(found, `${colorScheme} ${viewport.width}px ${mode}`).toEqual([]);
+    }
+  }
+});
