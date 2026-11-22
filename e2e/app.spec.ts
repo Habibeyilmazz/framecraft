@@ -316,11 +316,17 @@ test('an export too large for the browser explains itself', async ({ page }) => 
   await expect(page.locator('#toast')).toHaveText(/more than browsers can export/);
 });
 
+/** Put text in a field the way a paste does, with one input event (fill sends one per character on long text). */
+const paste = (page: Page, label: string, text: string) =>
+  page.getByLabel(label).evaluate((el: HTMLTextAreaElement, t) => {
+    el.value = t;
+    el.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertFromPaste' }));
+  }, text);
+
 test('a huge snippet keeps the preview canvas small', async ({ page }) => {
-  test.slow(); // highlighting and measuring 11 000 characters takes seconds in slower engines
   // a share link this small once made the preview allocate over a gigabyte of canvas
   await page.locator('#r-code-fontSize').fill('32');
-  await page.getByLabel('Snippet').fill('W'.repeat(5500) + '\nx'.repeat(3000));
+  await paste(page, 'Snippet', 'W'.repeat(5500) + '\nx'.repeat(3000));
   await drawn(page);
   const { w, h } = await page.evaluate(() => {
     const c = document.querySelector<HTMLCanvasElement>('#preview')!;
