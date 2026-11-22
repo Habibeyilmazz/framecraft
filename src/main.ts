@@ -132,7 +132,10 @@ function renderNotesList() {
   const head = document.createElement('div');
   head.className = 'notes-head';
   head.innerHTML = `<span>Annotations</span><button type="button" class="link-btn">Remove all</button>`;
-  head.querySelector('button')!.onclick = () => commit(() => (design.notes = []));
+  head.querySelector('button')!.onclick = () => {
+    commit(() => (design.notes = []));
+    canvas.focus();
+  };
   const ul = document.createElement('ul');
   design.notes.forEach((n, i) => {
     const li = document.createElement('li');
@@ -153,7 +156,12 @@ function renderNotesList() {
       canvas.focus();
     };
     remove.setAttribute('aria-label', `Remove ${label}`);
-    remove.onclick = () => commit(() => design.notes.splice(i, 1));
+    remove.onclick = () => {
+      commit(() => design.notes.splice(i, 1));
+      // the list was rebuilt: focus the Remove button that took this one's place, so keyboard users stay in the list
+      const next = $$('#notes-list li').at(Math.min(i, design.notes.length - 1));
+      (next?.querySelector<HTMLElement>('button:last-child') ?? canvas).focus();
+    };
     ul.append(li);
   });
   host.append(head, ul);
@@ -298,6 +306,9 @@ fileInput.addEventListener('change', async () => {
 const tool = () => document.querySelector<HTMLInputElement>('input[name="tool"]:checked')?.value ?? '';
 let draft: { note: Note; ox: number; oy: number } | null = null;
 let drag: { note: Note; orig: Note; sx: number; sy: number; resize: boolean } | null = null;
+/** The pointer drawing or dragging; other fingers are ignored until it lifts. */
+let pointerId = -1;
+const busy = (e: PointerEvent) => !!(draft || drag) && e.pointerId !== pointerId;
 
 /** Content px that are about n screen px on the preview. */
 const screenPx = (n: number) => (rendered ? (n * rendered.scene.W) / canvas.getBoundingClientRect().width / rendered.scene.k : 0);
@@ -382,9 +393,11 @@ function focusLabelInput() {
 
 canvas.addEventListener('pointerdown', (e) => {
   const t = tool() as NoteKind | '';
-  if (design.mode !== 'shot' || !shot || e.button !== 0) return; // a right-click opens the menu; it must not draw
+  // a right-click opens the menu, and a second finger must not start a second drawing
+  if (design.mode !== 'shot' || !shot || e.button !== 0 || draft || drag) return;
   const p = pointerToContent(e);
   if (!p) return;
+  pointerId = e.pointerId;
   if (!t) {
     const handle = handleAt(p, e.pointerType === 'touch' ? 22 : 10); // fingers are less precise
     const note = handle ?? noteAt(p);
@@ -412,6 +425,7 @@ canvas.addEventListener('pointerdown', (e) => {
 });
 
 canvas.addEventListener('pointermove', (e) => {
+  if (busy(e)) return;
   const p = pointerToContent(e);
   if (!p) return;
   if (drag) {
@@ -437,7 +451,8 @@ canvas.addEventListener('pointermove', (e) => {
   scheduleDraw();
 });
 
-function endDraft() {
+function endDraft(e: PointerEvent) {
+  if (busy(e)) return;
   if (drag) {
     drag = null;
     commit();
@@ -454,6 +469,7 @@ function endDraft() {
 }
 canvas.addEventListener('pointerup', endDraft);
 canvas.addEventListener('pointercancel', endDraft);
+canvas.addEventListener('lostpointercapture', endDraft); // no pointerup can leave a drawing stuck and block the next one
 
 // Keyboard alternative to drawing: Enter adds, arrows move, Alt+arrows resize, Delete removes the selected annotation.
 canvas.addEventListener('keydown', (e) => {

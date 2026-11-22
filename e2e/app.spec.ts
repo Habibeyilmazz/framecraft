@@ -564,3 +564,40 @@ test('a right-click on the preview does not place an annotation', async ({ page 
   await page.mouse.up({ button: 'right' });
   await expect(page.locator('#notes-list')).toBeEmpty();
 });
+
+test('removing an annotation from the list keeps keyboard focus in the list', async ({ page }) => {
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'Step', exact: true }).check();
+  await page.locator('#preview').focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Remove Step 2' }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Remove Step 3' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Remove Step 1' })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#preview')).toBeFocused();
+});
+
+test.describe('on a touch screen', () => {
+  test.use({ hasTouch: true });
+
+  test('a second finger does not leave a stray annotation', async ({ page, browserName }) => {
+    test.skip(browserName !== 'chromium', 'multi-touch is sent through the Chrome DevTools Protocol');
+    await loadShot(page);
+    await page.getByRole('radio', { name: 'Box', exact: true }).check();
+    const box = (await page.locator('#preview').boundingBox())!;
+    const at = (u: number, v: number, id: number) => ({ x: box.x + box.width * u, y: box.y + box.height * v, id });
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: string, touchPoints: ReturnType<typeof at>[]) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints } as never);
+    await touch('touchStart', [at(0.2, 0.2, 0)]);
+    await touch('touchMove', [at(0.3, 0.3, 0)]);
+    await touch('touchStart', [at(0.3, 0.3, 0), at(0.6, 0.6, 1)]);
+    await touch('touchMove', [at(0.4, 0.4, 0), at(0.8, 0.8, 1)]);
+    await touch('touchEnd', [at(0.8, 0.8, 1)]);
+    await touch('touchEnd', []);
+    await expect(page.getByRole('button', { name: /^Box \d$/ })).toHaveText(['Box 1']);
+    // the box follows the first finger only: it ends at (0.4, 0.4), not where the second finger went
+    await expect.poll(async () => (await linkNotes(page)).map((n) => [n.w, n.h].map((v) => Math.round(v * 10) / 10))).toEqual([[0.2, 0.2]]);
+  });
+});
