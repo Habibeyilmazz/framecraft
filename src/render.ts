@@ -206,6 +206,19 @@ export function redact(img: Img, notes: Note[]): Img {
     const tctx = tiny.getContext('2d')!;
     tctx.imageSmoothingQuality = 'high';
     tctx.drawImage(out, x, y, w, h, 0, 0, tiny.width, tiny.height);
+    let src = tiny;
+    let [padX, padY] = [0, 0];
+    if (blur && 'filter' in tctx) {
+      // blur the small copy by 1 px, which looks like `cell` px at full size: a full-size blur took about 0.1 s per
+      // 12 MP redaction, so a 200-blur share link froze the tab for half a minute
+      src = document.createElement('canvas');
+      src.width = tiny.width + 4;
+      src.height = tiny.height + 4;
+      const sctx = src.getContext('2d')!;
+      sctx.filter = 'blur(1px)';
+      sctx.drawImage(tiny, 0, 0, src.width, src.height); // stretched over a 2 px border, so its faded edge falls outside the clip
+      [padX, padY] = [(2 * w) / tiny.width, (2 * h) / tiny.height];
+    }
     ctx.save();
     ctx.beginPath();
     ctx.rect(x, y, w, h);
@@ -213,9 +226,7 @@ export function redact(img: Img, notes: Note[]): Img {
     // clear first: the original pixels must not survive under a semi-transparent redaction
     ctx.clearRect(x, y, w, h);
     ctx.imageSmoothingEnabled = blur;
-    if (blur && 'filter' in ctx) ctx.filter = `blur(${cell}px)`;
-    const pad = blur ? cell * 2 : 0; // oversize so the blur has no faded edge
-    ctx.drawImage(tiny, x - pad, y - pad, w + pad * 2, h + pad * 2);
+    ctx.drawImage(src, x - padX, y - padY, w + padX * 2, h + padY * 2);
     ctx.restore();
   }
   redactCache = { img, key, out };
