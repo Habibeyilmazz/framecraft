@@ -525,8 +525,10 @@ canvas.addEventListener('pointermove', (e) => {
   const p = pointerToContent(e);
   if (!p) return;
   if (drag) {
+    // the grabbed point (or handle) started inside the crop and stays there, so the annotation never drags out of view
+    const [x, y] = intoCrop(p);
     Object.assign(drag.note, drag.orig);
-    moveNote(drag.note, p[0] - drag.sx, p[1] - drag.sy, drag.resize);
+    moveNote(drag.note, x - drag.sx, y - drag.sy, drag.resize);
     return scheduleDraw();
   }
   if (cropDraft) {

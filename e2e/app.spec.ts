@@ -854,6 +854,40 @@ test('crop: drag over the part to keep, export just that part, keep annotations 
   await expect(page.getByRole('button', { name: 'Step 1', exact: true })).toHaveCount(0);
 });
 
+test('the pointer cannot drag an annotation, or its handle, out of the crop', async ({ page }) => {
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await page.getByLabel('Padding').fill('0');
+  const at = async (u: number, v: number) => {
+    const box = (await page.locator('#preview').boundingBox())!;
+    return [box.x + box.width * u, box.y + box.height * v] as const;
+  };
+  const dragOn = async (from: [number, number], to: [number, number]) => {
+    await page.mouse.move(...(await at(...from)));
+    await page.mouse.down();
+    await page.mouse.move(...(await at(...to)), { steps: 4 });
+    await page.mouse.up();
+  };
+  await page.getByRole('radio', { name: 'Crop', exact: true }).check();
+  await dragOn([0.5, 0], [1, 1]); // the right half
+  await expect.poll(async () => (await linkDesign(page)).crop.x).toBeCloseTo(0.5, 2);
+  await page.getByRole('radio', { name: 'Box', exact: true }).check();
+  await drawn(page); // the preview now shows the crop alone
+  await dragOn([0.4, 0.4], [0.6, 0.6]);
+  await expect.poll(async () => (await linkNotes(page))[0]?.x).toBeCloseTo(0.7, 2);
+  await page.getByRole('radio', { name: 'Pointer', exact: true }).check();
+  await drawn(page);
+  // grab the box's left edge and throw it far past the crop's left edge (off the canvas)
+  await dragOn([0.4, 0.5], [-0.5, 0.5]);
+  await expect.poll(async () => (await linkNotes(page))[0].x).toBeCloseTo(0.5, 2);
+  // the resize handle stops at the crop's bottom-right corner too
+  const [x, y] = [(await linkNotes(page))[0].x + (await linkNotes(page))[0].w, 0.6];
+  await dragOn([(x - 0.5) * 2, y], [1.5, 1.5]);
+  await expect.poll(async () => (await linkNotes(page))[0].w).toBeCloseTo(0.5, 2);
+  const n = (await linkNotes(page))[0];
+  expect([n.x, n.y, n.x + n.w, n.y + n.h].map((v) => v.toFixed(2))).toEqual(['0.50', '0.40', '1.00', '1.00']);
+});
+
 test('a right-click on the preview does not place an annotation', async ({ page }) => {
   await loadShot(page);
   const box = (await page.locator('#preview').boundingBox())!;
