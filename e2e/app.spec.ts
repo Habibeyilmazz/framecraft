@@ -233,7 +233,8 @@ test('keyboard places a redaction that also wipes detail out of a tiny image', a
   await page.keyboard.press('Enter');
   await expect(page.getByText('Pixelate 1')).toBeVisible();
   await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
-  expect(await regionStats(page, centre)).toBeLessThan(30);
+  // a ratio, not a count: on a 2x screen (WebKit's default device) the upscaled cells blend at their edges
+  expect(await regionStats(page, centre)).toBeLessThan(before / 4);
 
   await page.keyboard.press('Shift+ArrowRight');
   await page.keyboard.press('Alt+ArrowDown');
@@ -246,4 +247,48 @@ test('an export too large for the browser explains itself', async ({ page }) => 
   await page.getByRole('radio', { name: '3x' }).check();
   await page.getByRole('button', { name: 'Download PNG' }).click();
   await expect(page.locator('#toast')).toHaveText(/more than browsers can export/);
+});
+
+test('the pointer drags any annotation, and the list picks which one the keyboard edits', async ({ page }) => {
+  await page.getByLabel('Padding').fill('0');
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  const box = (await page.locator('#preview').boundingBox())!;
+  const at = (u: number, v: number) => [box.x + box.width * u, box.y + box.height * v] as const;
+  /** Count clearly red pixels in a small square of the preview around (u, v). */
+  const red = (u: number, v: number) =>
+    page.evaluate(([u, v]) => {
+      const c = document.querySelector<HTMLCanvasElement>('#preview')!;
+      const d = c.getContext('2d')!.getImageData(u * c.width - 6, v * c.height - 6, 12, 12).data;
+      let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 110 && d[i + 2] < 110) n++;
+      return n;
+    }, [u, v]);
+
+  await page.getByRole('radio', { name: 'Box', exact: true }).check();
+  await page.mouse.move(...at(0.2, 0.2));
+  await page.mouse.down();
+  await page.mouse.move(...at(0.4, 0.5), { steps: 4 });
+  await page.mouse.up();
+  await page.getByRole('radio', { name: 'Step', exact: true }).check();
+  await page.mouse.click(...at(0.8, 0.2));
+  expect(await red(0.2, 0.35)).toBeGreaterThan(5);
+
+  // drag the box by its left edge; it is not the newest annotation
+  await page.getByRole('radio', { name: 'Pointer' }).check();
+  await page.mouse.move(...at(0.2, 0.35));
+  await page.mouse.down();
+  await page.mouse.move(...at(0.5, 0.35), { steps: 6 });
+  await page.mouse.up();
+  await expect(page.getByRole('button', { name: 'Box 1', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  expect(await red(0.2, 0.35)).toBe(0);
+  expect(await red(0.5, 0.35)).toBeGreaterThan(5);
+
+  // picking the step in the list sends Delete to it, not to the newest annotation
+  await page.getByRole('button', { name: 'Step 1', exact: true }).click();
+  await expect(page.locator('#preview')).toBeFocused();
+  await page.keyboard.press('Delete');
+  await expect(page.getByRole('button', { name: 'Step 1', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Box 1', exact: true })).toBeVisible();
 });
