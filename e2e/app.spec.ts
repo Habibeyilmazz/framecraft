@@ -202,3 +202,42 @@ test('works on a phone-sized screen without sideways scrolling', async ({ page }
   await expect(page.locator('#preview')).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
 });
+
+test('keyboard places a redaction that also wipes detail out of a tiny image', async ({ page }) => {
+  // paste a 64x64 image of random pixels: every pixel differs, so detail is easy to count
+  await page.evaluate(async () => {
+    const c = new OffscreenCanvas(64, 64);
+    const ctx = c.getContext('2d')!;
+    const img = ctx.createImageData(64, 64);
+    for (let i = 0; i < img.data.length; i++) img.data[i] = i % 4 === 3 ? 255 : Math.floor(Math.random() * 256);
+    ctx.putImageData(img, 0, 0);
+    const dt = new DataTransfer();
+    dt.items.add(new File([await c.convertToBlob()], 'noise.png', { type: 'image/png' }));
+    document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+  });
+  await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await page.locator('#r-padding').fill('0');
+  const centre: [number, number, number, number] = [0.4, 0.4, 0.2, 0.2];
+  const before = await regionStats(page, centre);
+  expect(before).toBeGreaterThan(100);
+
+  await page.getByRole('radio', { name: 'Pixelate' }).check();
+  await page.locator('#preview').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Pixelate 1')).toBeVisible();
+  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  expect(await regionStats(page, centre)).toBeLessThan(30);
+
+  await page.keyboard.press('Shift+ArrowRight');
+  await page.keyboard.press('Alt+ArrowDown');
+  await page.keyboard.press('Delete');
+  await expect(page.getByText('Pixelate 1')).toHaveCount(0);
+});
+
+test('an export too large for the browser explains itself', async ({ page }) => {
+  await page.getByLabel('Snippet').fill('x'.repeat(5000));
+  await page.getByRole('radio', { name: '3x' }).check();
+  await page.getByRole('button', { name: 'Download PNG' }).click();
+  await expect(page.locator('#toast')).toHaveText(/more than browsers can export/);
+});

@@ -48,6 +48,8 @@ describe('layout', () => {
     expect(shotDisplaySize(2800, 1600)).toEqual({ w: 1400, h: 800 });
     expect(shotDisplaySize(1170, 2532)).toEqual({ w: 462, h: 1000 });
     expect(shotDisplaySize(300, 200)).toEqual({ w: 300, h: 200 });
+    expect(shotDisplaySize(12000, 1)).toEqual({ w: 1400, h: 1 });
+    expect(shotDisplaySize(1, 12000)).toEqual({ w: 1, h: 1000 });
   });
 
   it('sizes code from the longest line and the line count', () => {
@@ -99,6 +101,19 @@ describe('layout', () => {
     const flat = layoutScene(d, { w: 800, h: 800 }).k;
     d.tiltY = 25;
     expect(layoutScene(d, { w: 800, h: 800 }).k).toBeLessThan(flat);
+  });
+});
+
+describe('layout edge cases', () => {
+  it('keeps the scale positive when padding and caption leave no room', () => {
+    const d = defaultDesign();
+    d.size = 'readme';
+    d.padding = 240;
+    d.caption.text = 'Hello';
+    d.tiltY = 15;
+    const s = layoutScene(d, { w: 400, h: 300 });
+    expect(s.k).toBeGreaterThan(0);
+    expect(Number.isFinite(s.k)).toBe(true);
   });
 });
 

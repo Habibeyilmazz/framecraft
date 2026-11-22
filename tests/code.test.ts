@@ -54,6 +54,9 @@ describe('highlight', () => {
   it('falls back to auto for an unknown language id', () => {
     expect(highlight('SELECT * FROM users WHERE id = 1;', 'klingon').lang).toBe('sql');
   });
+  it('does not treat inherited object keys as languages', () => {
+    for (const lang of ['constructor', 'toString', '__proto__']) expect(() => highlight('let a = 1;', lang)).not.toThrow();
+  });
 });
 
 describe('themes', () => {

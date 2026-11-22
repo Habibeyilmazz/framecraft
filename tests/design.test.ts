@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, MAX_CODE, sanitize, toTemplate } from '../src/design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, MAX_CODE, moveNote, sanitize, toTemplate, type Note } from '../src/design';
 
 describe('sanitize', () => {
   it('returns defaults for junk', () => {
@@ -73,6 +73,17 @@ describe('share URL encoding', () => {
     expect(await decodeDesign('AAAA')).toBeNull();
     expect(await decodeDesign('a'.repeat(300_000))).toBeNull();
   });
+
+  it('refuses a small link that inflates to a huge payload', async () => {
+    const bomb = new Uint8Array(await new Response(
+      new Blob([new Uint8Array(20_000_000).fill(32)]).stream().pipeThrough(new CompressionStream('deflate-raw')),
+    ).arrayBuffer());
+    let bin = '';
+    for (const b of bomb) bin += String.fromCharCode(b);
+    const s = btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+    expect(s.length).toBeLessThan(200_000);
+    expect(await decodeDesign(s)).toBeNull();
+  });
 });
 
 describe('templates', () => {
@@ -101,5 +112,40 @@ describe('templates', () => {
   it('survive a tampered template', () => {
     const out = applyTemplate(defaultDesign(), { padding: 'lots', bg: 5, code: null });
     expect(out.padding).toBe(defaultDesign().padding);
+  });
+});
+
+describe('moveNote', () => {
+  const note = (t: Note['t'], o: Partial<Note> = {}): Note => ({ t, x: 0.4, y: 0.4, x2: 0.6, y2: 0.6, w: 0.2, h: 0.2, n: 1, c: '#ff4d3d', ...o });
+
+  it('moves a box but keeps it inside the image', () => {
+    const n = note('box');
+    moveNote(n, 0.1, 0, false);
+    expect(n.x).toBeCloseTo(0.5);
+    moveNote(n, 1, 1, false);
+    expect([n.x, n.y]).toEqual([0.8, 0.8]);
+    expect([n.w, n.h]).toEqual([0.2, 0.2]);
+  });
+
+  it('resizes a box without letting it collapse or overflow', () => {
+    const n = note('pixel');
+    moveNote(n, -1, -1, true);
+    expect([n.w, n.h]).toEqual([0.01, 0.01]);
+    moveNote(n, 5, 5, true);
+    expect([n.w, n.h]).toEqual([0.6, 0.6]);
+  });
+
+  it('moves a whole arrow, or only its tip when resizing', () => {
+    const a = note('arrow');
+    moveNote(a, 0.1, 0, false);
+    expect([a.x, a.x2]).toEqual([0.5, 0.7]);
+    moveNote(a, 0, 0.1, true);
+    expect([a.y, a.y2]).toEqual([0.4, 0.7]);
+  });
+
+  it('moves a step badge', () => {
+    const s = note('step');
+    moveNote(s, -1, 0.05, false);
+    expect([s.x, s.y]).toEqual([0, 0.45]);
   });
 });

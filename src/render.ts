@@ -161,38 +161,56 @@ function drawWindowChrome(ctx: Ctx, d: Design, L: CardLayout) {
   ctx.fillRect(0, bar - 1, w, 1);
 }
 
-function drawNotes(ctx: Ctx, notes: Note[], c: Box, img: Img) {
-  const unit = Math.max(2, c.w * 0.005);
-  // redactions first, so arrows and boxes can sit on top of them
-  for (const n of notes) {
-    if (n.t !== 'blur' && n.t !== 'pixel') continue;
-    const dx = c.x + n.x * c.w;
-    const dy = c.y + n.y * c.h;
-    const dw = n.w * c.w;
-    const dh = n.h * c.h;
-    if (dw < 1 || dh < 1) continue;
-    const cell = n.t === 'pixel' ? c.w / 70 : c.w / 160;
+let redactCache: { img: Img; key: string; out: Img } | null = null;
+
+/**
+ * Bake blur and pixelate into a copy of the image, in image pixels. Each redaction samples the copy, so an
+ * overlapping one can never bring back pixels an earlier one covered. Cells are at least 8 image px, so even
+ * a tiny image loses its detail.
+ */
+export function redact(img: Img, notes: Note[]): Img {
+  const marks = notes.filter((n) => n.t === 'blur' || n.t === 'pixel');
+  if (!marks.length) return img;
+  const key = JSON.stringify(marks);
+  if (redactCache?.img === img && redactCache.key === key) return redactCache.out;
+  const out = document.createElement('canvas');
+  out.width = img.width;
+  out.height = img.height;
+  const ctx = out.getContext('2d')!;
+  ctx.drawImage(img, 0, 0);
+  for (const n of marks) {
+    const x = Math.floor(n.x * img.width);
+    const y = Math.floor(n.y * img.height);
+    const w = Math.ceil(n.w * img.width);
+    const h = Math.ceil(n.h * img.height);
+    if (w < 1 || h < 1) continue;
+    const blur = n.t === 'blur';
+    const cell = Math.max(8, img.width / (blur ? 160 : 70));
     const tiny = document.createElement('canvas');
-    tiny.width = Math.max(1, Math.round(dw / cell));
-    tiny.height = Math.max(1, Math.round(dh / cell));
+    tiny.width = Math.max(1, Math.round(w / cell));
+    tiny.height = Math.max(1, Math.round(h / cell));
     const tctx = tiny.getContext('2d')!;
     tctx.imageSmoothingQuality = 'high';
-    const sx = img.width / c.w;
-    const sy = img.height / c.h;
-    tctx.drawImage(img, n.x * img.width, n.y * img.height, dw * sx, dh * sy, 0, 0, tiny.width, tiny.height);
+    tctx.drawImage(out, x, y, w, h, 0, 0, tiny.width, tiny.height);
     ctx.save();
     ctx.beginPath();
-    ctx.rect(dx, dy, dw, dh);
+    ctx.rect(x, y, w, h);
     ctx.clip();
     // clear first: the original pixels must not survive under a semi-transparent redaction
-    ctx.clearRect(dx, dy, dw, dh);
-    ctx.imageSmoothingEnabled = n.t === 'blur';
-    if (n.t === 'blur' && 'filter' in ctx) ctx.filter = `blur(${cell * 1.2}px)`;
-    // draw slightly oversized so the blur has no faded edge
-    const pad = n.t === 'blur' ? cell * 2 : 0;
-    ctx.drawImage(tiny, dx - pad, dy - pad, dw + pad * 2, dh + pad * 2);
+    ctx.clearRect(x, y, w, h);
+    ctx.imageSmoothingEnabled = blur;
+    if (blur && 'filter' in ctx) ctx.filter = `blur(${cell}px)`;
+    const pad = blur ? cell * 2 : 0; // oversize so the blur has no faded edge
+    ctx.drawImage(tiny, x - pad, y - pad, w + pad * 2, h + pad * 2);
     ctx.restore();
   }
+  redactCache = { img, key, out };
+  return out;
+}
+
+/** Arrows, boxes and step badges, drawn over the (already redacted) image. */
+function drawNotes(ctx: Ctx, notes: Note[], c: Box) {
+  const unit = Math.max(2, c.w * 0.005);
   for (const n of notes) {
     ctx.strokeStyle = ctx.fillStyle = n.c;
     ctx.lineWidth = unit;
@@ -252,8 +270,8 @@ function drawShotCard(ctx: Ctx, d: Design, L: CardLayout, img: Img) {
     ctx.clip();
     ctx.fillStyle = '#000';
     ctx.fillRect(c.x, c.y, c.w, c.h);
-    ctx.drawImage(img, c.x, c.y, c.w, c.h);
-    drawNotes(ctx, d.notes, c, img);
+    ctx.drawImage(redact(img, d.notes), c.x, c.y, c.w, c.h);
+    drawNotes(ctx, d.notes, c);
     if (c.h > c.w) {
       const iw = c.w * 0.32, ih = c.w * 0.094;
       ctx.beginPath();
@@ -273,8 +291,8 @@ function drawShotCard(ctx: Ctx, d: Design, L: CardLayout, img: Img) {
   ctx.fillStyle = d.dark ? '#1c1d21' : '#ffffff';
   ctx.fillRect(0, 0, L.w, L.h);
   if (L.bar) drawWindowChrome(ctx, d, L);
-  ctx.drawImage(img, c.x, c.y, c.w, c.h);
-  drawNotes(ctx, d.notes, c, img);
+  ctx.drawImage(redact(img, d.notes), c.x, c.y, c.w, c.h);
+  drawNotes(ctx, d.notes, c);
   if (d.frame !== 'none') {
     ctx.beginPath();
     roundRect(ctx, 0.5, 0.5, L.w - 1, L.h - 1, L.radius);
@@ -461,6 +479,22 @@ export function render(d: Design, a: Assets, scale: number, target?: HTMLCanvasE
     return [(u - card.content.x) / card.content.w, (v - card.content.y) / card.content.h];
   };
   return { canvas, scene, card, toContent };
+}
+
+// Safari's canvas area cap is the smallest of the major browsers (about 16.7 megapixels on iOS, 268 on desktop Chrome);
+// shortcut: one conservative limit for all, raise it if people hit it on desktop.
+export const MAX_SIDE = 16384;
+export const MAX_AREA = 120_000_000;
+
+/** Throws with a readable message when an export would be larger than browsers can draw. */
+export function checkExportSize(d: Design, a: Assets, scale: number) {
+  const size = contentSize(d, a);
+  if (!size) return;
+  const { W, H } = layoutScene(d, layoutCard(d, size));
+  const w = Math.round(W * scale);
+  const h = Math.round(H * scale);
+  if (w > MAX_SIDE || h > MAX_SIDE || w * h > MAX_AREA)
+    throw new Error(`At ${scale}x this image would be ${w} × ${h} px, more than browsers can export. Use a lower scale, a fixed size, or shorter lines.`);
 }
 
 export async function toBlob(canvas: HTMLCanvasElement): Promise<Blob> {

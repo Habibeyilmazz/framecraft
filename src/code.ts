@@ -150,7 +150,7 @@ export interface Highlighted {
 /** Highlight code; lang 'auto' lets highlight.js guess from the registered languages. */
 export function highlight(code: string, lang: string): Highlighted {
   const text = code.replace(/\r\n?/g, '\n').replace(/\t/g, '  ').replace(/\s+$/, '');
-  if (lang !== 'auto' && LANGUAGES[lang]) return { lang, lines: htmlToLines(hljs.highlight(text, { language: lang, ignoreIllegals: true }).value) };
+  if (Object.hasOwn(LANGUAGES, lang)) return { lang, lines: htmlToLines(hljs.highlight(text, { language: lang, ignoreIllegals: true }).value) };
   const res = hljs.highlightAuto(text);
   return { lang: res.language ?? 'plaintext', lines: htmlToLines(res.value) };
 }

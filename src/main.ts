@@ -2,10 +2,10 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource-variable/instrument-sans';
 import './style.css';
 import { CODE_THEMES, highlight, LANGUAGES, type Highlighted } from './code';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, moveNote, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
 import { layoutCard, layoutScene } from './layout';
 import { GRADIENTS, MESHES, NOTE_COLORS, SIZE_PRESETS } from './presets';
-import { contentSize, MONO, render, SANS, toBlob, type Assets, type Img, type Rendered } from './render';
+import { checkExportSize, contentSize, MONO, render, SANS, toBlob, type Assets, type Img, type Rendered } from './render';
 import { codeToSvg } from './svg';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -210,8 +210,8 @@ async function loadImage(file: File): Promise<Img | null> {
   }
   try {
     const bmp = await createImageBitmap(file);
-    if (bmp.width > 12000 || bmp.height > 12000) {
-      toast('That image is larger than 12000 px on a side. Use a smaller file.', true);
+    if (bmp.width > 12000 || bmp.height > 12000 || bmp.width * bmp.height > 50_000_000) {
+      toast('That image is over 12000 px on a side or 50 megapixels. Use a smaller file.', true);
       return null;
     }
     return bmp;
@@ -306,6 +306,35 @@ function endDraft() {
 canvas.addEventListener('pointerup', endDraft);
 canvas.addEventListener('pointercancel', endDraft);
 
+// Keyboard alternative to drawing: Enter adds, arrows move, Alt+arrows resize, Delete removes the last annotation.
+canvas.addEventListener('keydown', (e) => {
+  if (design.mode !== 'shot' || !shot) return;
+  const t = tool() as NoteKind | '';
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    if (!t) return toast('Pick a tool first, then press Enter to add it.');
+    const n: Note = { t, x: 0.35, y: 0.35, x2: 0.5, y2: 0.5, w: 0.3, h: 0.3, n: 1, c: noteColor };
+    if (t === 'step') {
+      n.x = n.y = 0.5;
+      n.n = design.notes.filter((m) => m.t === 'step').length + 1;
+    }
+    commit(() => design.notes.push(n));
+    toast('Added. Arrow keys move it, Alt+arrow keys resize it, Delete removes it.');
+    return;
+  }
+  if (e.key === 'Delete' || e.key === 'Backspace') {
+    e.preventDefault();
+    return undoNote();
+  }
+  const dir: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+  const last = design.notes[design.notes.length - 1];
+  if (!dir[e.key] || !last) return;
+  e.preventDefault();
+  const step = e.shiftKey ? 0.05 : 0.01;
+  const [dx, dy] = dir[e.key].map((v) => v * step);
+  commit(() => moveNote(last, dx, dy, e.altKey));
+});
+
 function undoNote() {
   if (design.mode === 'shot' && design.notes.length) commit(() => design.notes.pop());
 }
@@ -326,9 +355,15 @@ function download(blob: Blob, name: string) {
 }
 
 function renderExport(): HTMLCanvasElement | null {
-  const r = render(design, assets(), design.scale);
-  if (!r) toast('Add a screenshot first.', true);
-  return r?.canvas ?? null;
+  try {
+    checkExportSize(design, assets(), design.scale);
+    const r = render(design, assets(), design.scale);
+    if (!r) toast('Add a screenshot first.', true);
+    return r?.canvas ?? null;
+  } catch (err) {
+    toast((err as Error).message, true);
+    return null;
+  }
 }
 
 async function exportPng() {

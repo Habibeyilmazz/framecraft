@@ -96,6 +96,27 @@ export function defaultDesign(): Design {
   };
 }
 
+/** Nudge an annotation (or, with resize, its size or arrow tip) while keeping it inside the image. */
+export function moveNote(n: Note, dx: number, dy: number, resize: boolean) {
+  const c = (v: number, hi = 1) => Math.min(hi, Math.max(0, v));
+  if (n.t === 'arrow') {
+    n.x2 = c(n.x2 + dx);
+    n.y2 = c(n.y2 + dy);
+    if (resize) return;
+    n.x = c(n.x + dx);
+    n.y = c(n.y + dy);
+  } else if (n.t === 'step') {
+    n.x = c(n.x + dx);
+    n.y = c(n.y + dy);
+  } else if (resize) {
+    n.w = Math.max(0.01, c(n.w + dx, 1 - n.x));
+    n.h = Math.max(0.01, c(n.h + dy, 1 - n.y));
+  } else {
+    n.x = c(n.x + dx, 1 - n.w);
+    n.y = c(n.y + dy, 1 - n.h);
+  }
+}
+
 // ---- validation (the URL hash and localStorage are untrusted input) ----
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
@@ -179,9 +200,26 @@ export function sanitize(input: unknown): Design {
 
 // ---- share URL: JSON -> deflate-raw -> base64url ----
 
-async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream): Promise<Uint8Array> {
-  const out = new Blob([bytes as BlobPart]).stream().pipeThrough(stream);
-  return new Uint8Array(await new Response(out).arrayBuffer());
+/** Run bytes through a (de)compression stream, giving up once the output passes maxOut bytes (a zip bomb guard). */
+async function pipe(bytes: Uint8Array, stream: CompressionStream | DecompressionStream, maxOut = Infinity): Promise<Uint8Array> {
+  const reader = new Blob([bytes as BlobPart]).stream().pipeThrough(stream).getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  for (let r = await reader.read(); !r.done; r = await reader.read()) {
+    size += r.value.length;
+    if (size > maxOut) {
+      await reader.cancel();
+      throw new Error('Design too large');
+    }
+    chunks.push(r.value);
+  }
+  const out = new Uint8Array(size);
+  let at = 0;
+  for (const c of chunks) {
+    out.set(c, at);
+    at += c.length;
+  }
+  return out;
 }
 
 export async function encodeDesign(d: Design): Promise<string> {
@@ -197,8 +235,7 @@ export async function decodeDesign(s: string): Promise<Design | null> {
   try {
     const bin = atob(s.replace(/-/g, '+').replace(/_/g, '/'));
     const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
-    const json = new TextDecoder().decode(await pipe(bytes, new DecompressionStream('deflate-raw')));
-    if (json.length > 1_000_000) return null;
+    const json = new TextDecoder().decode(await pipe(bytes, new DecompressionStream('deflate-raw'), 1_000_000));
     return sanitize(JSON.parse(json));
   } catch {
     return null;

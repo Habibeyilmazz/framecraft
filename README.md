@@ -30,8 +30,11 @@ npm run dev        # opens on http://localhost:4210
 - Drop an image on the page, paste it with Ctrl+V / ⌘V, or pick a file (PNG, JPEG, WebP, GIF, AVIF).
 - Frames: none, browser window (with an editable address), macOS window (with a title), phone. Light or dark windows.
 - Annotations: arrows, boxes, numbered step badges, blur and pixelate. Blur and pixelate rebuild the region from a tiny
-  downscaled copy and clear the original pixels first, so the exported file does not contain what you covered.
+  downscaled copy (cells of at least 8 image pixels) and clear the original pixels first, so the exported file does not
+  contain what you covered, and overlapping redactions never bring covered pixels back.
   Every annotation is listed in the sidebar with a Remove button; Ctrl+Z / ⌘Z undoes the last one.
+- Keyboard: Tab to the preview, pick a tool, press Enter to add an annotation, arrow keys to move it (Shift for bigger
+  steps), Alt+arrow keys to resize it or move an arrow's tip, Delete to remove it.
 
 **Code mode**
 
@@ -47,7 +50,8 @@ npm run dev        # opens on http://localhost:4210
 - Padding, corner radius, four shadow strengths, 3D tilt in two axes, and a caption above or below.
 - Output sizes: fit to content, GitHub social preview (1280 × 640), README banner (1280 × 480), X post (1600 × 900),
   LinkedIn post (1200 × 627), Open Graph (1200 × 630), square (1080 × 1080).
-- Export PNG at 1x, 2x or 3x, or copy the image straight to the clipboard.
+- Export PNG at 1x, 2x or 3x, or copy the image straight to the clipboard. Exports over 16384 px on a side or
+  120 megapixels are refused with a message instead of failing silently.
 - Export SVG for code cards: the code stays real text with the fonts embedded, so it is sharp at any size
   ([example](docs/code-card.svg)). SVG is not offered for tilted cards, because SVG has no perspective transform.
 - **Copy link** puts the whole design in the URL (compressed), so anyone who opens it gets the same look.
@@ -87,7 +91,7 @@ in the repository settings, then run the workflow from the Actions tab.
 
 Not built yet:
 
-- Selecting, moving and resizing an annotation after it is drawn (today: remove and redraw), and a keyboard way to place them.
+- Selecting and editing any annotation after it is drawn (today the keyboard moves only the last one; otherwise remove and redraw).
 - Text labels as an annotation.
 - SVG export for screenshot mode.
 - Custom output sizes and a custom gradient editor.

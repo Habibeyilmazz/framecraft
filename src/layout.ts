@@ -44,7 +44,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v
 /** Screenshots are shown at most 1400x1000 logical px; 2x/3x export brings back retina detail. */
 export function shotDisplaySize(iw: number, ih: number): { w: number; h: number } {
   const s = Math.min(1, 1400 / iw, 1000 / ih);
-  return { w: Math.round(iw * s), h: Math.round(ih * s) };
+  return { w: Math.max(1, Math.round(iw * s)), h: Math.max(1, Math.round(ih * s)) };
 }
 
 export function codeMetrics(lines: string[], fontSize: number, lineNumbers: boolean, measure: (s: string) => number): CodeMetrics {
@@ -90,18 +90,12 @@ export function layoutScene(d: Design, card: { w: number; h: number }): Scene {
   const p = d.padding;
   const band = captionBand(d);
   const preset = SIZE_PRESETS[d.size];
-  let W: number, H: number, k: number;
-  if (preset.w) {
-    W = preset.w;
-    H = preset.h;
-    k = Math.max(0.05, Math.min((W - 2 * p) / card.w, (H - 2 * p - band) / card.h));
-  } else {
-    W = Math.round(card.w + 2 * p);
-    H = Math.round(card.h + 2 * p + band);
-    k = 1;
-  }
-  const availW = W - 2 * p;
-  const availH = H - 2 * p - band;
+  const W = preset.w || Math.round(card.w + 2 * p);
+  const H = preset.h || Math.round(card.h + 2 * p + band);
+  // padding and caption can eat a whole preset; keep at least a sliver so the scale stays positive
+  const availW = Math.max(1, W - 2 * p);
+  const availH = Math.max(1, H - 2 * p - band);
+  let k = preset.w ? Math.min(availW / card.w, availH / card.h) : 1;
   if (d.tiltX || d.tiltY) {
     // shrink so the tilted card still fits the padded area
     const q = projectCard(card.w * k, card.h * k, 0, 0, d.tiltX, d.tiltY);

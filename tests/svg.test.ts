@@ -41,6 +41,12 @@ describe('buildCodeSvg', () => {
     expect(svg).toContain('&quot;x&quot; &amp; y');
   });
 
+  it('drops characters that XML forbids', () => {
+    const svg = build((d) => (d.caption.text = 'a\u0000b\u001fc'));
+    expect(svg).toContain('>abc</text>');
+    expect(svg).not.toMatch(/[\u0000-\u0008]/);
+  });
+
   it('marks highlighted lines', () => {
     const on = build((d) => (d.code.highlight = '2'));
     const off = build((d) => (d.code.highlight = ''));

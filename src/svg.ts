@@ -6,7 +6,8 @@ import { layoutCard, layoutScene, type CodeMetrics } from './layout';
 import { GRADIENTS, gradientLine, MESHES, meshBlobs, SHADOW_PRESETS } from './presets';
 import { codeLayout } from './render';
 
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// strip characters XML 1.0 forbids (a NUL from a shared link would break the file), then escape markup
+const esc = (s: string) => s.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffe\uffff]/g, '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const n = (v: number) => String(Math.round(v * 100) / 100);
 
 export interface SvgInputs {
