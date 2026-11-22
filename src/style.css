@@ -230,7 +230,11 @@ legend {
   background: rgba(127, 140, 132, 0.14);
 }
 .group .seg span {
-  padding: 6px 4px;
+  /* same 36px height as inputs and buttons, so mixed rows line up */
+  display: grid;
+  place-items: center;
+  min-height: 36px;
+  padding: 0 4px;
   font-size: 13px;
 }
 .group .seg > label:first-of-type {
@@ -366,6 +370,8 @@ legend {
   min-height: 0;
   padding: 28px;
   overflow: hidden;
+  /* the light-theme focus colour is too dark on the green mat (2.5:1); amber is 6.6:1 */
+  --focus: var(--accent);
 }
 #preview {
   display: block;
@@ -736,12 +742,43 @@ input[type='color'] {
   .workspace {
     grid-template-columns: 1fr;
   }
-  .stage {
-    min-height: 62vh;
+  .canvas-wrap {
+    padding: 16px;
   }
   .inspector {
     border-left: 0;
     overflow: visible;
+  }
+}
+
+/* phones: share/copy buttons on one row, scale and download on the next */
+@media (max-width: 600px) {
+  .actions {
+    row-gap: 0;
+  }
+  .actions .ghost {
+    flex: 1;
+  }
+  .actions::after {
+    content: '';
+    order: 1;
+    flex-basis: 100%;
+  }
+  .actions .scale,
+  .actions .primary {
+    order: 2;
+    margin-top: 8px;
+  }
+  .actions .primary {
+    flex: 1;
+    min-height: 42px;
+  }
+}
+
+/* touch-only devices have no paste shortcut or drag and drop */
+@media (hover: none) {
+  .desk-only {
+    display: none;
   }
 }
 

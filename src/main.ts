@@ -22,6 +22,7 @@ const current = (): Note | undefined => (selected && design.notes.includes(selec
 
 const canvas = $<HTMLCanvasElement>('#preview');
 const wrap = $('#canvas-wrap');
+const stacked = matchMedia('(max-width: 960px)'); // keep in step with the media query in style.css
 
 // ---------- state helpers ----------
 
@@ -173,7 +174,10 @@ function draw() {
   }
   const scene = layoutScene(design, layoutCard(design, size));
   const box = wrap.getBoundingClientRect();
-  const f = Math.min(1, (box.width - 56) / scene.W, (box.height - 56) / scene.H);
+  const pad = 2 * parseFloat(getComputedStyle(wrap).paddingLeft);
+  // stacked layout: the stage grows to fit the preview, so cap it by the viewport instead of the stage
+  const maxH = stacked.matches ? document.documentElement.clientHeight * 0.6 : box.height - pad;
+  const f = Math.min(1, (box.width - pad) / scene.W, maxH / scene.H);
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   rendered = render(design, a, Math.max(0.05, f) * dpr, canvas);
   canvas.style.width = `${Math.round(scene.W * f)}px`;
@@ -572,6 +576,7 @@ function wire() {
   });
 
   new ResizeObserver(scheduleDraw).observe(wrap);
+  stacked.addEventListener('change', scheduleDraw);
 }
 
 /** Load the design from the URL hash, if there is one. Our own updates use replaceState, which fires no hashchange. */

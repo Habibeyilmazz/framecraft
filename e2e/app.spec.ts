@@ -17,7 +17,7 @@ async function readout(page: Page) {
 
 async function loadShot(page: Page) {
   await page.getByRole('radio', { name: 'Screenshot', exact: true }).check();
-  await expect(page.getByRole('heading', { name: 'Drop a screenshot here' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Add a screenshot' })).toBeVisible();
   await page.setInputFiles('#file', SAMPLE);
   await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
 }
@@ -140,7 +140,7 @@ test('rejects a file that is not an image', async ({ page }) => {
   await page.getByRole('radio', { name: 'Screenshot', exact: true }).check();
   await page.setInputFiles('#file', { name: 'notes.txt', mimeType: 'text/plain', buffer: Buffer.from('hello') });
   await expect(page.locator('#toast')).toHaveText(/notes.txt is not an image/);
-  await expect(page.getByRole('heading', { name: 'Drop a screenshot here' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Add a screenshot' })).toBeVisible();
 });
 
 test('pasting an image switches to screenshot mode', async ({ page, browserName }) => {
@@ -213,6 +213,12 @@ test('works on a phone-sized screen without sideways scrolling', async ({ page }
   const swatches = await page.locator('#note-colors label').evaluateAll((ls) => ls.map((l) => l.getBoundingClientRect().width));
   expect(Math.min(...swatches)).toBeGreaterThanOrEqual(22);
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+  // a landscape preview uses the width of the phone, and the stage ends just below it (no empty mat)
+  await drawn(page);
+  const preview = (await page.locator('#preview').boundingBox())!;
+  const stage = (await page.locator('#canvas-wrap').boundingBox())!;
+  expect(preview.width).toBeGreaterThanOrEqual(375 - 2 * 16 - 1);
+  expect(stage.y + stage.height - (preview.y + preview.height)).toBeLessThanOrEqual(17);
 });
 
 test('keyboard places a redaction that also wipes detail out of a tiny image', async ({ page }) => {
