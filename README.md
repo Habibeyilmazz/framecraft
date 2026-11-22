@@ -112,6 +112,9 @@ npm test           # unit tests (Vitest)
 npm run e2e        # end-to-end tests in Chromium (Playwright; builds and serves on port 4211)
 ```
 
+Before the first `npm run e2e`, download Playwright's Chromium once with `npx playwright install chromium`;
+without it the run stops with "Executable doesn't exist".
+
 CI runs the end-to-end tests in Chromium, Firefox and WebKit (Safari's engine). To do the same locally, install
 those browsers with `npx playwright install firefox webkit` and run `ALL_BROWSERS=1 npm run e2e`. Three tests are
 skipped outside Chromium: the clipboard test (only Chromium lets a test grant clipboard access; the main-journey test
