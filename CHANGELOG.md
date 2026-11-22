@@ -7,6 +7,22 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Round 10 ("design"): looked at the running app at 1440 px and 390 px, light and dark, in both modes, with the empty,
+  annotating, label-editing, template and error-toast states, and walked the keyboard focus order (logical, every stop
+  has a visible ring). Fixed what the screenshots showed:
+  - **Dark mode selected states.** The picked segment of every segmented control (mode, scale, frame, background,
+    shadow, caption position) was *darker* than its track, so it read as unselected; the picked annotation tool was
+    nearly the toolbar's colour. Two tokens, `--seg-on` and `--tool-on`, are now lighter in dark mode. Light mode is
+    unchanged.
+  - The white annotation swatch was almost invisible in light mode and the black one in dark mode; both get a grey ring.
+  - Dark-mode checkboxes use the amber accent, like the sliders, instead of the dark green.
+  - **Copy image and Download PNG looked ready with no screenshot loaded.** They now show as unavailable
+    (`aria-disabled`, with a "Add a screenshot first" tooltip) and still explain themselves on click, like SVG does
+    while tilted. e2e test, checked to fail without the change.
+  - `docs/screenshots/phone.png` and `screenshot-mode.png` regenerated with `scripts/readme-images.mjs`; the other
+    README images came out byte-identical.
+- Round 10, not changed: Codex, Safari, Firefox and screen-reader passes as in round 9 (none run locally).
+
 - Round 9 ("first-run": a fresh clone of GitHub `main`, README quickstart followed literally, then a read of the code).
   The quickstart itself worked (`npm install`, `npm run dev`, typecheck, 62 unit and 37 e2e tests green). Fixed:
   - **A share link's annotations never showed.** Opening a link (or reloading the page) listed its annotations, but
