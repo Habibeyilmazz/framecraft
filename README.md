@@ -31,14 +31,16 @@ npm run dev        # then open http://localhost:4210
 
 ![Screenshot mode with a browser frame, a box, an arrow, a text label, two numbered steps and a deploy key hidden under a solid cover](docs/screenshots/screenshot-mode.png)
 
-- Drop an image on the page, paste it with Ctrl+V / ⌘V, or pick a file (PNG, JPEG, WebP, GIF, AVIF).
+- Drop an image on the page, paste it with Ctrl+V / ⌘V, or pick a file (PNG, JPEG, WebP, GIF, AVIF, SVG). An SVG
+  is drawn 2000 px on its long side, so a diagram stays sharp on a 2x export; its scripts never run and it loads
+  nothing from the network.
 - Frames: none, browser window (with an editable address), macOS window (with a title), phone. Light or dark windows.
 - Crop: pick Crop and the whole image shows with the crop outlined; drag over the part to keep. From the keyboard,
   arrow keys move the crop, Alt+arrow keys resize it and Delete shows the whole image again; so does
   "Show whole image" in the sidebar. Annotations stay attached to the whole image, so a crop never moves or drops
   one: a redaction outside the crop still covers its pixels if you widen the crop later. Undo covers crop changes,
-  and replacing the image clears the crop. Dragging an annotation with the Pointer stops at the crop's edge, and a new
-  text label is kept inside it.
+  and replacing the image clears the crop. Moving an annotation with the Pointer or the arrow keys stops at the crop's
+  edge (one already outside can still be moved back in), and a new text label is kept inside it.
 - Annotations: arrows, boxes, numbered step badges, text labels, and three redactions: blur, pixelate and cover. Blur and pixelate
   rebuild the region from a tiny downscaled copy (cells of at least 8 image pixels) and clear the original pixels
   first, so the exported file does not contain what you covered, and overlapping redactions never bring covered
@@ -161,6 +163,7 @@ source you can run or host yourself.
 Not built yet:
 
 - Multi-line text labels.
+- An aspect-ratio lock for the crop.
 - SVG export for screenshot mode.
 - A custom gradient editor.
 - More frames (iPad, Android, Windows window) and line wrapping for long code lines.

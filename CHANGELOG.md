@@ -7,6 +7,21 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
+- Round 14 ("launch"): checked the two reported gaps that were bugs first, each with an e2e test seen to fail
+  before the fix:
+  - **SVG files were refused as a screenshot** (or a background image): `createImageBitmap` does not decode them.
+    They now decode through an `<img>` (`decodeSvg` in `src/main.ts`), where an SVG runs no scripts and loads
+    nothing, and are drawn 2000 px on the long side in their own shape, so they stay sharp on a 2x export. An SVG with
+    only a `viewBox` keeps its shape in Chromium; in a browser that gives it no size at all it would come out 2:1
+    (300 x 150). The test feeds an SVG with a `<script>` and an external `<image>`, checks neither ran nor loaded,
+    and checks the PNG still exports (the canvas is not tainted). Firefox and WebKit run it only in CI.
+  - **Arrow keys moved a selected annotation out of the crop**, where it was hidden. Its corner (or, with Alt, its
+    resize handle) now stops at the crop's edge, like a Pointer drag. One that is already outside, for example
+    drawn before cropping, can still be moved back in.
+- Round 14, launch review of the repo, no change needed: README already had a real hero image made with framecraft,
+  a recorded demo GIF, a quickstart, a feature list, how it works, a comparison with alternatives, a roadmap and
+  contributing notes; CONTRIBUTING.md, SECURITY.md, issue templates, repo description and topics were in place.
+  Only the format list, the crop note and the roadmap (crop aspect-ratio lock) changed.
 - Round 13 ("tests"): a reliability pass. Tried to break the built app with Playwright scripts (odd and empty input,
   huge input, unicode, broken files, blocked storage, crafted links, quick repeated actions). Each bug below got a
   failing test first (checked to fail without the fix), then the fix:
