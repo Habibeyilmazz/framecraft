@@ -765,3 +765,19 @@ test('an image dropped outside the stage loads instead of navigating away', asyn
   });
   expect(text).toBe(false);
 });
+
+test('step badges stop at 99 with a message instead of repeating 99', async ({ page }) => {
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'Step', exact: true }).check();
+  await page.locator('#preview').focus();
+  for (let i = 0; i < 99; i++) await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveCount(99);
+  await expect(page.getByRole('button', { name: /^Step \d+$/ }).last()).toHaveText('Step 99');
+  // the 100th is refused, from the keyboard and from the mouse
+  await page.locator('#preview').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#toast')).toHaveText('Steps go up to 99.');
+  const box = (await page.locator('#preview').boundingBox())!;
+  await page.mouse.click(box.x + box.width * 0.2, box.y + box.height * 0.2);
+  await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveCount(99);
+});
