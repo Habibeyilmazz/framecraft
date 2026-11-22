@@ -5,6 +5,38 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Round 13 ("tests"): a reliability pass. Tried to break the built app with Playwright scripts (odd and empty input,
+  huge input, unicode, broken files, blocked storage, crafted links, quick repeated actions). Each bug below got a
+  failing test first (checked to fail without the fix), then the fix:
+  - **The Pointer dragged annotations past the crop's edge** (round 12's reported gap), where they were hidden. The
+    grabbed point, or the resize handle, now stops at the crop's edge, so part of the annotation always shows. e2e test.
+    The keyboard can still move a selected annotation out of the crop on purpose (and back).
+  - **A text label placed near the crop's edge was cut off by it**, and so was one whose words grew past it. A new or
+    edited label is now shifted to stay inside the crop (a label bigger than the crop sticks out at its left or top,
+    never off the image). e2e test.
+  - **2 s freeze on a crafted snippet.** Trimming trailing whitespace with `/\s+$/` is quadratic in a run of spaces:
+    a 20 000-character snippet (the cap, and a share link can carry one) with a long run of spaces and newlines in the
+    middle took about 2 s to highlight. Now `trimEnd()`. Unit test with a 100 ms bound.
+  - **"Saved" when nothing was saved.** With storage full or blocked, saving a template showed the error toast and
+    at once replaced it with "Saved NAME.", and cleared the name. Deleting said "Deleted" and kept the template.
+    Now only the error shows and the name stays. e2e test.
+  - **Two images added quickly: the first one won.** A big image pasted just before a small one finished decoding
+    last and replaced it. Only the most recent image is used now. e2e test.
+  - **Pasting text copied from a spreadsheet or office app swapped in a picture.** Those apps put a picture of the
+    selection on the clipboard next to the text; pasting into the snippet, caption or any text field now pastes
+    the text. A picture alone still becomes the screenshot, wherever it is pasted. e2e test.
+- Round 13, tried and fine, no change: an empty or whitespace-only snippet, emoji/CJK/RTL/combining characters and
+  control characters (PNG and SVG export, the SVG stays clean), a 20 000-character line and 2000 lines (PNG export
+  is refused with a message saying why), empty, truncated and 1 x 1 PNGs, 4000 x 2 and 2 x 4000 images, broken, empty and
+  300 000-character share links, junk in stored templates, odd custom sizes (0, -5, 1e3, 99999, 640.5, empty). No
+  request leaves the page (works offline once loaded). The app has no dates, so no time zone cases.
+- Round 13, not done: SVG files cannot be used as a screenshot (Chromium's `createImageBitmap` refuses them; the
+  toast says the file could not be read). No aspect-ratio lock for the crop (a feature, out of this round's lens).
+  Codex was out of quota, so the review was by hand. Firefox and WebKit ran only in CI: the first CI run showed that
+  a drag leaving the window never finished in Firefox there, so the new crop test keeps its drags inside the window.
+
 ### Added
 
 - Round 12 ("feature"): **crop a screenshot**. Used the app as a newcomer would, with a full-size 2200 x 1280
