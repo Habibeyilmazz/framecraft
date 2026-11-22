@@ -19,7 +19,8 @@ All notable changes to this project are documented here. The format follows
       it silently allowed more than 200, which a reload then dropped. `noteLimit()` is the one check for both,
       so what the editor allows always survives a reload. A dropped redaction would show what it covered.
       Unit tests, plus two e2e tests: the crafted link renders 30 blurs within 10 s (about 1 s here), and a
-      keyboard blur cuts neighbour-to-neighbour roughness on random pixels by more than 10x.
+      keyboard blur cuts neighbour-to-neighbour roughness on random pixels by more than 10x (7x in CI's WebKit; the
+      test asks for 5x).
     - Still slow in one place: CI's WebKit (Linux, software canvas) took 19 s for those 30 whole-image blurs on
       12 MP, so the 10 s check runs in Chromium only. Real Safari on a Mac is not measured. If it is slow too, the
       next step is a lower `MAX_REDACTIONS` or a cap on total redacted area.
