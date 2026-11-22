@@ -680,3 +680,24 @@ test('main journey: frame a screenshot, cover a secret, caption it, download it,
   await expect(fresh.getByRole('textbox', { name: 'Text' })).toHaveValue('Deploys at a glance');
   await expect(fresh.getByRole('radio', { name: 'None', exact: true }).first()).toBeChecked();
 });
+
+test('the preview redraws when a font for new characters arrives', async ({ page }) => {
+  // Cyrillic glyphs come in their own font file, fetched on first use; make it arrive late
+  await page.route('**/*cyrillic*', async (route) => {
+    await new Promise((done) => setTimeout(done, 300));
+    await route.continue();
+  });
+  await paste(page, 'Snippet', '// Привет, мир\nconst answer = 42;');
+  await page.waitForTimeout(600);
+  const stale = await page.evaluate(async () => {
+    await document.fonts.ready;
+    const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
+    await frame();
+    const c = document.querySelector<HTMLCanvasElement>('#preview')!;
+    const shown = c.toDataURL();
+    document.querySelector('textarea')!.dispatchEvent(new Event('input', { bubbles: true })); // force a redraw
+    await frame();
+    return shown !== c.toDataURL();
+  });
+  expect(stale).toBe(false);
+});

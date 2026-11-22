@@ -734,6 +734,8 @@ async function start() {
   renderTemplates();
   syncControls();
   draw();
+  // canvas text draws a fallback while a font file (e.g. the Cyrillic subset, fetched on first use) loads: redraw once it lands
+  document.fonts.addEventListener('loadingdone', scheduleDraw);
   // canvas text needs the web fonts actually loaded, not just declared
   await Promise.all([document.fonts.load(`400 16px ${MONO}`), document.fonts.load(`600 16px ${SANS}`)]).catch(() => {});
   hlCache = null;
