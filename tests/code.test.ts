@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CODE_THEMES, DETECT_SAMPLE, highlight, htmlToLines, MAX_HIGHLIGHT_LINE, parseLineRanges } from '../src/code';
-import { defaultDesign } from '../src/design';
+import { defaultDesign, MAX_CODE } from '../src/design';
 
 describe('parseLineRanges', () => {
   it('reads single lines and ranges', () => {
@@ -85,6 +85,15 @@ describe('highlight', () => {
     expect(highlight('1e'.repeat(5000), 'auto').lang).toBe('plaintext');
     // a line at the limit is still coloured
     expect(highlight('int a = 1; // ' + 'x'.repeat(MAX_HIGHLIGHT_LINE - 14), 'java').lines[0].some((t) => t.role !== 'fg')).toBe(true);
+  });
+  it('stays fast on a long run of whitespace inside the text (a share link can carry one)', () => {
+    // trimming trailing space with /\s+$/ took 300 ms here and grows with the square of the run
+    const code = 'a' + ' \n'.repeat((MAX_CODE - 2) / 2) + 'a';
+    const start = performance.now();
+    const { lines } = highlight(code, 'plaintext');
+    expect(performance.now() - start).toBeLessThan(100);
+    expect(lines.length).toBe(MAX_CODE / 2);
+    expect(highlight('x = 1  \n \t\n\n', 'python').lines.length).toBe(1); // trailing blank lines still go
   });
   it('does not treat inherited object keys as languages', () => {
     for (const lang of ['constructor', 'toString', '__proto__']) expect(() => highlight('let a = 1;', lang)).not.toThrow();

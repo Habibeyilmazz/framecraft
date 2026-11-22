@@ -155,7 +155,7 @@ export const MAX_HIGHLIGHT_LINE = 1000;
 
 /** Highlight code; lang 'auto' lets highlight.js guess from the registered languages. */
 export function highlight(code: string, lang: string): Highlighted {
-  const text = code.replace(/\r\n?/g, '\n').replace(/\t/g, '  ').replace(/\s+$/, '');
+  const text = code.replace(/\r\n?/g, '\n').replace(/\t/g, '  ').trimEnd(); // not /\s+$/: that is quadratic in a run of spaces
   const colour = (language: string) => htmlToLines(hljs.highlight(text, { language, ignoreIllegals: true }).value);
   const plain = (language: string): Highlighted => ({ lang: language, lines: text.split('\n').map((line) => (line ? [{ text: line, role: 'fg' }] : [])) });
   const known = Object.hasOwn(LANGUAGES, lang);
