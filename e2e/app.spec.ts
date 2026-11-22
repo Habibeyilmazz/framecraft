@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { crc32, deflateRawSync, deflateSync } from 'node:zlib';
 
 const SAMPLE = 'e2e/fixtures/sample-screenshot.png';
 
@@ -352,6 +353,84 @@ test('keyboard places a redaction that also wipes detail out of a tiny image', a
   await page.keyboard.press('Alt+ArrowDown');
   await page.keyboard.press('Delete');
   await expect(page.getByText('Pixelate 1')).toHaveCount(0);
+});
+
+/** A grey PNG of w x h px, built here so a big image costs no fixture file. */
+function greyPng(w: number, h: number) {
+  const chunk = (type: string, data: Buffer) => {
+    const td = Buffer.concat([Buffer.from(type), data]);
+    const out = Buffer.alloc(td.length + 8);
+    out.writeUInt32BE(data.length);
+    td.copy(out, 4);
+    out.writeUInt32BE(crc32(td), td.length + 4);
+    return out;
+  };
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(w);
+  ihdr.writeUInt32BE(h, 4);
+  ihdr.set([8, 0], 8); // 8-bit greyscale
+  const rows = Buffer.alloc((w + 1) * h, 128);
+  for (let y = 0; y < h; y++) rows[y * (w + 1)] = 0; // filter byte
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', deflateSync(rows)), chunk('IEND', Buffer.alloc(0))]);
+}
+
+test('a share link stacking blurs keeps 30 and draws a big screenshot quickly', async ({ page }) => {
+  // 200 whole-image blurs in a 184-character link froze the tab for about 27 s once a 12 MP screenshot was added
+  const notes = Array.from({ length: 200 }, () => ({ t: 'blur', x: 0, y: 0, w: 1, h: 1 }));
+  await page.goto(`/#d=${deflateRawSync(JSON.stringify({ mode: 'shot', notes })).toString('base64url')}`);
+  await expect(page.getByRole('heading', { name: 'Add a screenshot' })).toBeVisible();
+  const start = Date.now();
+  await page.setInputFiles('#file', { name: 'big.png', mimeType: 'image/png', buffer: greyPng(4096, 3072) });
+  await expect(page.locator('#readout')).toHaveText(/exports at/, { timeout: 20_000 });
+  expect(Date.now() - start).toBeLessThan(10_000);
+  await expect(page.getByRole('button', { name: /^Blur \d+$/ })).toHaveCount(30);
+});
+
+test('blur wipes out detail, and the 31st redaction is refused', async ({ page }) => {
+  // random pixels, so every neighbour differs a lot until something smooths them
+  const noise = await page.evaluate(async () => {
+    const c = new OffscreenCanvas(400, 300);
+    const ctx = c.getContext('2d')!;
+    const img = ctx.createImageData(400, 300);
+    for (let i = 0; i < img.data.length; i++) img.data[i] = i % 4 === 3 ? 255 : Math.floor(Math.random() * 256);
+    ctx.putImageData(img, 0, 0);
+    const bytes = new Uint8Array(await (await c.convertToBlob()).arrayBuffer());
+    let bin = '';
+    for (const b of bytes) bin += String.fromCharCode(b);
+    return btoa(bin);
+  });
+  await page.getByRole('radio', { name: 'Screenshot', exact: true }).check();
+  await page.setInputFiles('#file', { name: 'noise.png', mimeType: 'image/png', buffer: Buffer.from(noise, 'base64') });
+  await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await page.locator('#r-padding').fill('0');
+  // mean difference between horizontal neighbours (red channel) in the middle of the area the keyboard covers
+  const roughness = () =>
+    page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>('#preview')!;
+      const d = c.getContext('2d')!.getImageData(c.width * 0.42, c.height * 0.42, c.width * 0.16, c.height * 0.16).data;
+      let sum = 0;
+      for (let i = 4; i < d.length; i += 4) sum += Math.abs(d[i] - d[i - 4]);
+      return sum / (d.length / 4);
+    });
+  await drawn(page);
+  const before = await roughness();
+  expect(before).toBeGreaterThan(40);
+
+  await page.getByRole('radio', { name: 'Blur' }).check();
+  await page.locator('#preview').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByText('Blur 1')).toBeVisible();
+  await drawn(page);
+  expect(await roughness()).toBeLessThan(before / 10);
+
+  for (let i = 1; i < 30; i++) await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: /^Blur \d+$/ })).toHaveCount(30);
+  await page.getByRole('radio', { name: 'Cover' }).check();
+  await page.locator('#preview').focus();
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#toast')).toHaveText(/^Up to 30 blur, pixelate and cover areas/);
+  await expect(page.getByRole('button', { name: /^Cover \d+$/ })).toHaveCount(0);
 });
 
 test('an export too large for the browser explains itself', async ({ page }) => {

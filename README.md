@@ -36,7 +36,8 @@ npm run dev        # then open http://localhost:4210
 - Annotations: arrows, boxes, numbered step badges, text labels, and three redactions: blur, pixelate and cover. Blur and pixelate
   rebuild the region from a tiny downscaled copy (cells of at least 8 image pixels) and clear the original pixels
   first, so the exported file does not contain what you covered, and overlapping redactions never bring covered
-  pixels back. Cover paints the region one solid colour.
+  pixels back. Cover paints the region one solid colour. An image takes up to 200 annotations, 30 of them
+  redactions, and 99 step badges; past that the editor says so instead of adding one that a reload would drop.
 - **For passwords, keys and tokens use Cover.** Blurred or pixelated text keeps a coarse shape, and tools such as
   Depix have recovered short pixelated strings in a known font. A solid fill leaves nothing to reconstruct.
   Every annotation is listed in the sidebar with a Remove button; Ctrl+Z / ⌘Z undoes the last change to them

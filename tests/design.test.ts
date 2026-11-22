@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_CODE, MAX_LABEL, moveNote, nextStep, sanitize, toTemplate, type Note } from '../src/design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_CODE, MAX_LABEL, MAX_NOTES, MAX_REDACTIONS, moveNote, nextStep, noteLimit, sanitize, toTemplate, type Note } from '../src/design';
 
 describe('sanitize', () => {
   it('returns defaults for junk', () => {
@@ -67,6 +67,17 @@ describe('sanitize', () => {
     expect(label.s!.startsWith('Ship it ')).toBe(true);
     expect(box.s).toBeUndefined();
     expect(sanitize({ notes: [{ t: 'text', s: 42 }] }).notes[0].s).toBe('');
+  });
+
+  it('keeps the first MAX_REDACTIONS blur, pixelate and cover areas from a link, and every other annotation', () => {
+    // a 184-character link stacking 200 full-image blurs froze the tab for about 27 s once a 12 MP screenshot was added
+    const whole = (t: string) => ({ t, x: 0, y: 0, w: 1, h: 1 });
+    const notes = [whole('arrow'), ...Array.from({ length: 100 }, (_, i) => whole(['blur', 'pixel', 'cover'][i % 3])), whole('box')];
+    const kept = sanitize({ notes }).notes;
+    expect(kept.filter((n) => n.t === 'blur' || n.t === 'pixel' || n.t === 'cover')).toHaveLength(MAX_REDACTIONS);
+    expect(kept.map((n) => n.t).slice(0, 4)).toEqual(['arrow', 'blur', 'pixel', 'cover']);
+    expect(kept.at(-1)!.t).toBe('box');
+    expect(sanitize({ notes: Array.from({ length: 500 }, () => whole('arrow')) }).notes).toHaveLength(MAX_NOTES);
   });
 
   it('does not keep unknown keys', () => {
@@ -244,5 +255,25 @@ describe('nextStep', () => {
 
   it('goes past 99, so the caller can refuse a step a share link could not keep', () => {
     expect(nextStep([step(99)])).toBe(100);
+  });
+});
+
+describe('noteLimit', () => {
+  const note = (t: Note['t'], n = 1): Note => ({ t, x: 0, y: 0, x2: 0, y2: 0, w: 0.1, h: 0.1, n, c: '#ff4d3d' });
+  const many = (t: Note['t'], count: number) => Array.from({ length: count }, (_, i) => note(t, i + 1));
+
+  it('refuses what a reload or share link would drop, so no redaction is ever lost', () => {
+    expect(noteLimit([], 'blur')).toBeNull();
+    expect(noteLimit(many('cover', MAX_REDACTIONS - 1), 'pixel')).toBeNull();
+    expect(noteLimit(many('blur', MAX_REDACTIONS), 'cover')).toMatch(/Up to 30 blur/);
+    expect(noteLimit(many('blur', MAX_REDACTIONS), 'arrow')).toBeNull(); // the redaction cap does not stop other tools
+    expect(noteLimit(many('arrow', MAX_NOTES), 'arrow')).toMatch(/Up to 200 annotations/);
+    expect(noteLimit(many('step', 99), 'step')).toBe('Steps go up to 99.');
+    expect(noteLimit(many('step', 98), 'step')).toBeNull();
+  });
+
+  it('agrees with sanitize: whatever it allows survives a round trip', () => {
+    const notes = [...many('blur', MAX_REDACTIONS), ...many('arrow', MAX_NOTES - MAX_REDACTIONS)];
+    expect(sanitize({ notes }).notes).toHaveLength(MAX_NOTES);
   });
 });

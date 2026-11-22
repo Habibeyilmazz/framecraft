@@ -139,6 +139,23 @@ export const MAX_STEP = 99;
 /** Number for a new step badge: one past the highest, so deleting a step never leads to a repeat. Callers refuse it past MAX_STEP. */
 export const nextStep = (notes: Note[]) => Math.max(0, ...notes.filter((n) => n.t === 'step').map((n) => n.n)) + 1;
 
+export const MAX_NOTES = 200;
+/** Each blur or pixelate re-reads up to the whole image, so a link stacking hundreds of them froze the tab. */
+export const MAX_REDACTIONS = 30;
+const isRedaction = (t: NoteKind) => t === 'blur' || t === 'pixel' || t === 'cover';
+
+/**
+ * Why a new annotation of kind t cannot be added, or null if it can. The editor refuses past the limits sanitize
+ * enforces, so a reload or share link never drops an annotation (a dropped redaction would show what it covered).
+ */
+export function noteLimit(notes: Note[], t: NoteKind): string | null {
+  if (notes.length >= MAX_NOTES) return `Up to ${MAX_NOTES} annotations. Remove one first.`;
+  if (isRedaction(t) && notes.filter((n) => isRedaction(n.t)).length >= MAX_REDACTIONS)
+    return `Up to ${MAX_REDACTIONS} blur, pixelate and cover areas. Draw a bigger one instead.`;
+  if (t === 'step' && nextStep(notes) > MAX_STEP) return `Steps go up to ${MAX_STEP}.`;
+  return null;
+}
+
 /** Radius of a step badge on content that is w px wide. */
 export const stepRadius = (w: number) => Math.max(10, w * 0.018);
 
@@ -183,7 +200,6 @@ function pick<T extends string>(v: unknown, list: readonly T[], def: T): T {
 }
 
 export const MAX_CODE = 20000;
-export const MAX_NOTES = 200;
 export const MAX_LABEL = 80;
 /** Limits of a custom output size, in px at 1x (3x of the largest stays under the 16384 px export limit). */
 export const MIN_SIDE = 64;
@@ -255,8 +271,16 @@ export function sanitize(input: unknown): Design {
       title: str(code.title, 120, d.code.title),
       bar: bool(code.bar, d.code.bar),
     },
-    notes: (Array.isArray(o.notes) ? o.notes.slice(0, MAX_NOTES) : []).map(sanitizeNote).filter((n): n is Note => n !== null),
+    notes: sanitizeNotes(o.notes),
   };
+}
+
+/** The first MAX_NOTES valid annotations, keeping only the first MAX_REDACTIONS redactions among them. */
+function sanitizeNotes(v: unknown): Note[] {
+  let redactions = 0;
+  return (Array.isArray(v) ? v.slice(0, MAX_NOTES) : [])
+    .map(sanitizeNote)
+    .filter((n): n is Note => n !== null && (!isRedaction(n.t) || ++redactions <= MAX_REDACTIONS));
 }
 
 // ---- share URL: JSON -> deflate-raw -> base64url ----
