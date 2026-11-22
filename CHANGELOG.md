@@ -16,6 +16,10 @@ All notable changes to this project are documented here. The format follows
   `base-uri` and `form-action` set to `'none'`. Every e2e test fails if the page reports a policy violation, and
   one test checks that an injected inline event handler is blocked.
 - README says that the address bar (and so browser history) holds the code snippet as you edit.
+- A crafted share link of about 150 characters (32 px font, one 5500-character line, 3000 lines) made the preview
+  allocate over a gigabyte of canvas and could freeze the tab: the preview scale had a 0.05 floor and only exports
+  were size-checked. The preview canvas is now capped at 4096 px a side (`PREVIEW_MAX` in `src/main.ts`), with an
+  e2e test. Found by a Codex second-opinion review.
 
 ### Added
 
@@ -47,7 +51,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Notes for the next person
 
-- Round 3 ("security" review), checked and found fine: share-link decoding (base64url check, 200 kB input and 1 MB
+- Round 3 ("security" review): the security-review skill could not run (it needs the session to start inside a git
+  repo), so the review was done by hand, plus one Codex pass. Checked and found fine: share-link decoding (base64url check, 200 kB input and 1 MB
   inflate caps, every field clamped or enum-checked, colours must be `#rrggbb`); templates from localStorage go
   through the same sanitizer; all user text reaches the DOM through `textContent` and the SVG through an escaper
   (tested); no `eval`/`Function`/inline scripts; images are size- and pixel-capped; `npm audit` reports 0

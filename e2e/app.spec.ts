@@ -315,6 +315,20 @@ test('an export too large for the browser explains itself', async ({ page }) => 
   await expect(page.locator('#toast')).toHaveText(/more than browsers can export/);
 });
 
+test('a huge snippet keeps the preview canvas small', async ({ page }) => {
+  test.slow(); // highlighting and measuring 11 000 characters takes seconds in slower engines
+  // a share link this small once made the preview allocate over a gigabyte of canvas
+  await page.locator('#r-code-fontSize').fill('32');
+  await page.getByLabel('Snippet').fill('W'.repeat(5500) + '\nx'.repeat(3000));
+  await drawn(page);
+  const { w, h } = await page.evaluate(() => {
+    const c = document.querySelector<HTMLCanvasElement>('#preview')!;
+    return { w: c.width, h: c.height };
+  });
+  expect(Math.max(w, h)).toBeLessThanOrEqual(4096);
+  await expect(page.locator('#readout')).toHaveText(/exports at/);
+});
+
 test('the pointer drags any annotation, and the list picks which one the keyboard edits', async ({ page }) => {
   await page.getByLabel('Padding').fill('0');
   await loadShot(page);

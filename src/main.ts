@@ -158,6 +158,7 @@ function renderNotesList() {
 // ---------- drawing ----------
 
 let frame = 0;
+const PREVIEW_MAX = 4096;
 function scheduleDraw() {
   cancelAnimationFrame(frame);
   frame = requestAnimationFrame(draw);
@@ -181,7 +182,8 @@ function draw() {
   const maxH = stacked.matches ? document.documentElement.clientHeight * 0.6 : box.height - pad;
   const f = Math.min(1, (box.width - pad) / scene.W, maxH / scene.H);
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
-  rendered = render(design, a, Math.max(0.05, f) * dpr, canvas);
+  // never more than 4096 px a side: a tiny share link can describe a card far larger than any screen
+  rendered = render(design, a, Math.min(Math.max(0.05, f) * dpr, PREVIEW_MAX / scene.W, PREVIEW_MAX / scene.H), canvas);
   canvas.style.width = `${Math.round(scene.W * f)}px`;
   canvas.style.height = `${Math.round(scene.H * f)}px`;
   const s = design.scale;
