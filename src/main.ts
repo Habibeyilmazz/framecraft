@@ -212,7 +212,9 @@ function draw() {
   for (const [font, chars] of text) {
     if (!chars || fontAsked.get(font) === chars) continue; // once per text, so a font that never loads cannot loop
     fontAsked.set(font, chars);
-    if (!document.fonts.check(font, chars)) document.fonts.load(font, chars).then(scheduleDraw, () => {});
+    // not document.fonts.check(): WebKit calls a face that is still loading ready
+    const waiting = new Set([...document.fonts].filter((f) => f.status !== 'loaded'));
+    if (waiting.size) document.fonts.load(font, chars).then((faces) => faces.some((f) => waiting.has(f)) && scheduleDraw(), () => {});
   }
 }
 

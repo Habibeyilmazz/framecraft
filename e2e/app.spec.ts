@@ -681,33 +681,12 @@ test('main journey: frame a screenshot, cover a secret, caption it, download it,
   await expect(fresh.getByRole('radio', { name: 'None', exact: true }).first()).toBeChecked();
 });
 
-test('the preview redraws when a font for new characters arrives', async ({ page, browserName }) => {
+test('the preview redraws when a font for new characters arrives', async ({ page }) => {
   // Cyrillic glyphs come in their own font file, fetched on first use; make it arrive late
   await page.route('**/*cyrillic*', async (route) => {
+    const response = await route.fetch();
     await new Promise((done) => setTimeout(done, 300));
-    await route.continue();
-  });
-  page.on('console', (m) => m.text().startsWith('DIAG') && console.log(browserName, m.text()));
-  await page.evaluate(() => {
-    const w = window as unknown as { log: string[] };
-    w.log = [];
-    const c = document.querySelector<HTMLCanvasElement>('#preview')!;
-    let last = c.toDataURL();
-    const t0 = performance.now();
-    const face = () => [...document.fonts].find((f) => f.family.includes('JetBrains') && f.unicodeRange.includes('U+400'))?.status;
-    const tick = () => {
-      const now = c.toDataURL();
-      const st = face();
-      w.log.push(`${Math.round(performance.now() - t0)}:${st}${now !== last ? ':CHANGED' : ''}`);
-      last = now;
-      if (performance.now() - t0 < 2500) setTimeout(tick, 50);
-    };
-    setTimeout(tick, 0);
-    const orig = document.fonts.load.bind(document.fonts);
-    document.fonts.load = (f: string, t?: string) => {
-      w.log.push(`load(${f.slice(0, 20)},${(t ?? '').slice(0, 8)}) check=${document.fonts.check(f, t)}`);
-      return orig(f, t).then((r) => (w.log.push(`loaded ${r.length} ${face()}`), r));
-    };
+    await route.fulfill({ response });
   });
   await paste(page, 'Snippet', '// Привет, мир\nconst answer = 42;');
   // wait for that font file itself: in WebKit document.fonts.ready can resolve before the load starts
@@ -721,10 +700,7 @@ test('the preview redraws when a font for new characters arrives', async ({ page
     const shown = c.toDataURL();
     document.querySelector('textarea')!.dispatchEvent(new Event('input', { bubbles: true })); // force a redraw
     await frame();
-    const after = c.toDataURL();
-    await new Promise((d) => setTimeout(d, 2600));
-    console.log('DIAG ' + (window as unknown as { log: string[] }).log.join(' | '));
-    return shown !== after;
+    return shown !== c.toDataURL();
   });
   expect(stale).toBe(false);
 });
