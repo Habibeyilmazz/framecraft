@@ -923,9 +923,11 @@ test('the pointer cannot drag an annotation, or its handle, out of the crop', as
   await loadShot(page);
   await page.getByRole('radio', { name: 'None', exact: true }).first().check();
   await page.getByLabel('Padding').fill('0');
+  // a drag that left the window never finished in CI's Firefox, so points off the preview are pulled into the window
   const at = async (u: number, v: number) => {
     const box = (await page.locator('#preview').boundingBox())!;
-    return [box.x + box.width * u, box.y + box.height * v] as const;
+    const { width, height } = page.viewportSize()!;
+    return [Math.min(width - 2, Math.max(1, box.x + box.width * u)), Math.min(height - 2, Math.max(1, box.y + box.height * v))] as const;
   };
   const dragOn = async (from: [number, number], to: [number, number]) => {
     await page.mouse.move(...(await at(...from)));
@@ -944,16 +946,16 @@ test('the pointer cannot drag an annotation, or its handle, out of the crop', as
   await expect.poll(async () => (await linkNotes(page))[0]?.x).toBeCloseTo(c.x + 0.4 * c.w, 2);
   await page.getByRole('radio', { name: 'Pointer', exact: true }).check();
   await drawn(page);
-  // grab the box's left edge and throw it far past the crop's left edge (off the canvas)
-  await dragOn([0.4, 0.5], [-0.5, 0.5]);
-  await expect.poll(async () => (await linkNotes(page))[0].x).toBeCloseTo(c.x, 2);
+  // grab the box's top edge and throw it far past the crop's top edge (off the canvas)
+  await dragOn([0.5, 0.4], [0.5, -1]);
+  await expect.poll(async () => (await linkNotes(page))[0].y).toBeCloseTo(c.y, 2);
   // the resize handle (bottom-right corner) stops at the crop's bottom-right corner too
   const b = (await linkNotes(page))[0];
   await dragOn([(b.x + b.w - c.x) / c.w, (b.y + b.h - c.y) / c.h], [1.5, 1.5]);
   await expect.poll(async () => (await linkNotes(page))[0].w).toBeCloseTo(c.x + c.w - b.x, 2);
   const n = (await linkNotes(page))[0];
-  expect(n.x).toBeCloseTo(c.x, 2);
-  expect(n.y).toBeCloseTo(b.y, 2);
+  expect(n.x).toBeCloseTo(b.x, 2);
+  expect(n.y).toBeCloseTo(c.y, 2);
   expect(n.y + n.h).toBeCloseTo(c.y + c.h, 2);
 });
 
