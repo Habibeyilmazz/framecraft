@@ -36,7 +36,8 @@ Firefox and WebKit; to do that locally, install them too and run `ALL_BROWSERS=1
   design field needs a default, a clamp or allow-list there, and a unit test.
 - **Few dependencies.** Prefer the platform (Canvas, `CompressionStream`, `createImageBitmap`) over a package.
 - **Accessible by keyboard.** Every new control needs a label and a visible focus ring, and annotations must stay
-  usable without a mouse.
+  usable without a mouse. An e2e test runs axe-core (WCAG 2.2 AA and best practices) in both modes, light and dark;
+  if a new panel only shows in some state, open it in that test too.
 
 ## README images and demo GIF
 

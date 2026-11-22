@@ -58,7 +58,7 @@ npm run dev        # then open http://localhost:4210
 
 <img src="docs/code-card.png" alt="A highlighted TypeScript snippet in a dark window on a dusk gradient" width="560">
 
-- Syntax highlighting for 24 languages with [highlight.js](https://highlightjs.org/), including automatic language detection.
+- Syntax highlighting for 24 languages with [highlight.js](https://highlightjs.org/), including automatic language detection (from the first 4000 characters, so a long paste stays quick).
 - Themes: Framecraft, One Dark, Dracula, Nord, GitHub Dark, GitHub Light, Solarized Light (palettes follow the published schemes they are named after).
 - Line numbers, highlighted lines (`2, 4-6`), file name in the window bar, font size.
 
