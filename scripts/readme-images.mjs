@@ -79,4 +79,23 @@ await code.waitForTimeout(300);
 await save(code, 'Download PNG', 'docs/code-card.png');
 await save(code, 'SVG', 'docs/code-card.svg');
 
+// 4. the editor on a phone, with a box selected so its resize handle shows
+const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, colorScheme: 'dark' });
+await phone.goto(url);
+await phone.getByRole('radio', { name: 'Screenshot', exact: true }).check();
+await phone.setInputFiles('#file', root('e2e/fixtures/sample-screenshot.png'));
+await phone.getByRole('radio', { name: 'Gradient' }).check();
+await phone.getByRole('radio', { name: 'Lagoon' }).check();
+await phone.getByRole('radio', { name: 'Box', exact: true }).check();
+await phone.evaluate(() => window.scrollTo(0, 0)); // checking the gradient scrolled the settings into view
+await phone.waitForTimeout(300);
+const pbox = await phone.locator('#preview').boundingBox();
+await phone.mouse.move(pbox.x + pbox.width * 0.24, pbox.y + pbox.height * 0.235);
+await phone.mouse.down();
+await phone.mouse.move(pbox.x + pbox.width * 0.468, pbox.y + pbox.height * 0.485, { steps: 6 });
+await phone.mouse.up();
+await phone.getByRole('radio', { name: 'Pointer' }).check();
+await phone.waitForTimeout(300);
+await phone.screenshot({ path: root('docs/screenshots/phone.png') });
+
 await browser.close();

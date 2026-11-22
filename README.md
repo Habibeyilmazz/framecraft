@@ -63,6 +63,10 @@ npm run dev        # then open http://localhost:4210
 
 ![Code mode in the editor](docs/screenshots/code-mode.png)
 
+On a narrow screen the preview sits above the settings and fills the width.
+
+<img src="docs/screenshots/phone.png" alt="framecraft on a phone in dark mode: a box drawn on the screenshot, with its round resize handle" width="300">
+
 ## How it works
 
 - One design object (`src/design.ts`) describes everything except images. It is validated whenever it comes from

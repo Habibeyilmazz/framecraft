@@ -7,12 +7,26 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Mouse resizing: with the Pointer tool, the selected annotation shows a round handle (an arrow's tip, a box's
+  bottom-right corner); dragging it does what Alt+arrow keys do. The handle is a DOM element over the canvas, so it
+  never appears in exports, and it follows tilt. Fingers get a larger grab radius.
+- A phone screenshot in the README (`docs/screenshots/phone.png`, made by `scripts/readme-images.mjs`).
 - The Pointer tool drags any annotation, not just the newest. The names in the Annotations list are buttons that
   select which annotation the arrow keys and Delete act on; the selected one has an outline in the list.
 - CI runs the end-to-end tests in Firefox and WebKit as well as Chromium (`ALL_BROWSERS=1`).
 
 ### Fixed
 
+- Design pass (round 2): on phones the header buttons were scattered over three ragged rows; now the copy buttons
+  share one row and scale + Download PNG the next. The phone preview fills the width and the stage ends just below
+  it (it was a fixed 62vh with a small card floating in empty mat).
+- Inspector segmented controls are 36px tall like inputs and buttons, so the caption Colour and Position labels
+  line up.
+- Light theme: focus rings on the green mat (preview canvas, empty-state button) were 2.5:1; they now use amber
+  (6.6:1).
+- The empty state reads "Add a screenshot" and hides the drop/paste hints on touch-only devices.
+- The wordmark is the page's `<h1>` (the only finding of an axe-core WCAG 2.2 AA run, light and dark, desktop and
+  phone, both modes).
 - On phone-width screens the annotation toolbar squashed its colour swatches to slivers that overlapped the tools;
   it now wraps onto extra rows.
 - Delete on the preview removes the selected annotation instead of always the newest.
@@ -21,6 +35,10 @@ All notable changes to this project are documented here. The format follows
 
 ### Notes for the next person
 
+- Round 2 ("design" review): looked at real screenshots at 1440 and 390 px, light and dark, plus 768/961/980 px;
+  tabbed through the whole page (every stop has a visible ring); axe-core is clean. Not done: touch drag tested
+  only through Playwright mouse events, not a real finger; no real Safari/Firefox by hand; no SVG export for
+  screenshots; Pages workflow still unrun.
 - Round 1 ("first-run" review): fresh clone, `npm install`, `npm run dev`, build, unit and e2e tests all worked as the
   README says. `dist/` was served from a sub-folder (as GitHub Pages would) and loaded fonts and exported SVG fine.
 - Still open: Safari and Firefox are covered only by Playwright's engines in CI, not by hand; no SVG export for
