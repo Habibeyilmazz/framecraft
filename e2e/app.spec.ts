@@ -957,6 +957,39 @@ test('the pointer cannot drag an annotation, or its handle, out of the crop', as
   expect(n.y + n.h).toBeCloseTo(c.y + c.h, 2);
 });
 
+test('a label placed at the edge of the crop stays inside it, and keeps inside as its words grow', async ({ page }) => {
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await page.getByLabel('Padding').fill('0');
+  await drawn(page);
+  const at = async (u: number, v: number) => {
+    const box = (await page.locator('#preview').boundingBox())!;
+    return [box.x + box.width * u, box.y + box.height * v] as const;
+  };
+  await page.getByRole('radio', { name: 'Crop', exact: true }).check();
+  await page.mouse.move(...(await at(0.05, 0.05)));
+  await page.mouse.down();
+  await page.mouse.move(...(await at(0.5, 0.9)), { steps: 4 });
+  await page.mouse.up();
+  await expect.poll(async () => (await linkDesign(page)).crop.w).toBeCloseTo(0.45, 2);
+  const c = (await linkDesign(page)).crop;
+  await page.getByRole('radio', { name: 'Text', exact: true }).check();
+  await drawn(page);
+  await page.mouse.click(...(await at(0.97, 0.99))); // the crop's bottom-right corner
+  await page.keyboard.type('Rate limit reached');
+  await expect.poll(async () => (await linkNotes(page))[0]?.s).toBe('Rate limit reached');
+  const n = (await linkNotes(page))[0];
+  expect(n.x + n.w).toBeLessThanOrEqual(c.x + c.w + 1e-6);
+  expect(n.y + n.h).toBeLessThanOrEqual(c.y + c.h + 1e-6);
+  expect(n.x).toBeGreaterThanOrEqual(c.x);
+  // and at the top-left corner, where a new label sits a little above the click
+  await page.mouse.click(...(await at(0.01, 0.01)));
+  await expect.poll(async () => (await linkNotes(page)).length).toBe(2);
+  const m = (await linkNotes(page))[1];
+  expect(m.x).toBeGreaterThanOrEqual(c.x - 1e-6);
+  expect(m.y).toBeGreaterThanOrEqual(c.y - 1e-6);
+});
+
 test('a right-click on the preview does not place an annotation', async ({ page }) => {
   await loadShot(page);
   const box = (await page.locator('#preview').boundingBox())!;

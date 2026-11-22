@@ -432,15 +432,17 @@ const inCrop = (p: [number, number]) => intoCrop(p).every((v, i) => v === p[i]);
 
 const labelInput = $<HTMLInputElement>('#label-text');
 
-/** Size a text label to fit its words at font size fs (content px), shifting it left or up to stay on the image. */
+/** Size a text label to fit its words at font size fs (content px), shifting it left or up to stay on the part that shows. */
 function fitLabel(n: Note, fs: number) {
   if (!rendered) return;
   const { w, h } = rendered.whole;
+  const { x, y, w: cw, h: ch } = design.crop;
   const size = labelSize(measureLabel(n.s ?? ''), fs);
   n.w = Math.min(1, size.w / w);
   n.h = Math.min(1, size.h / h);
-  n.x = Math.min(n.x, 1 - n.w);
-  n.y = Math.min(n.y, 1 - n.h);
+  // a label bigger than the crop sticks out past its left or top edge, but never off the image
+  n.x = Math.max(0, Math.min(Math.max(n.x, x), x + cw - n.w));
+  n.y = Math.max(0, Math.min(Math.max(n.y, y), y + ch - n.h));
 }
 
 /** A new label: about the size of a step badge's number, centred vertically on (x, y). */
