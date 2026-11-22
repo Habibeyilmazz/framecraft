@@ -35,7 +35,8 @@ npm run dev        # then open http://localhost:4210
   pixels back. Cover paints the region one solid colour.
 - **For passwords, keys and tokens use Cover.** Blurred or pixelated text keeps a coarse shape, and tools such as
   Depix have recovered short pixelated strings in a known font. A solid fill leaves nothing to reconstruct.
-  Every annotation is listed in the sidebar with a Remove button; Ctrl+Z / ⌘Z undoes the last one.
+  Every annotation is listed in the sidebar with a Remove button; Ctrl+Z / ⌘Z undoes the last change to them
+  (adding, moving, resizing, editing or removing).
 - Text labels: pick Text and click the image to place a label, or drag to set its size. Its words are selected in a
   box next to the toolbar, so you can type straight away; Enter takes you back to the image. Selecting a label later
   shows the box again. A label is one line of up to 80 characters on a pill in the annotation colour, with black or

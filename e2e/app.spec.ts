@@ -15,15 +15,16 @@ async function readout(page: Page) {
   return { w: Number(w), h: Number(h) };
 }
 
+/** Wait until the preview has redrawn: the canvas updates on the next animation frame, not with the controls. */
+const drawn = (page: Page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+
 async function loadShot(page: Page) {
   await page.getByRole('radio', { name: 'Screenshot', exact: true }).check();
   await expect(page.getByRole('heading', { name: 'Add a screenshot' })).toBeVisible();
   await page.setInputFiles('#file', SAMPLE);
   await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
+  await drawn(page); // the preview canvas appears on the next frame
 }
-
-/** Wait until the preview has redrawn: the canvas updates on the next animation frame, not with the controls. */
-const drawn = (page: Page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
 
 /** Rough fingerprint of a region of the preview canvas (relative coordinates). */
 function regionStats(page: Page, r: [number, number, number, number]) {
@@ -496,4 +497,64 @@ test('a second label gets its own words in the text box, even while the box has 
   await page.getByRole('button', { name: 'Text “First”', exact: true }).click();
   await page.getByRole('radio', { name: 'Pointer' }).check();
   await expect(words).toHaveValue('First');
+});
+
+/** The annotations in the share link (the URL updates 300 ms after a change). */
+const linkNotes = (page: Page) =>
+  page.evaluate(async () => {
+    const s = location.hash.slice(3).replace(/-/g, '+').replace(/_/g, '/');
+    if (!s) return [];
+    const bytes = Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+    const json = await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    return JSON.parse(json).notes as { t: string; n: number; w: number; h: number; s?: string }[];
+  });
+
+test('undo brings back a deleted annotation, and new steps never repeat a number', async ({ page }) => {
+  await loadShot(page);
+  const box = (await page.locator('#preview').boundingBox())!;
+  await page.getByRole('radio', { name: 'Step', exact: true }).check();
+  for (const u of [0.2, 0.4, 0.6]) await page.mouse.click(box.x + box.width * u, box.y + box.height * 0.5);
+  await page.getByRole('button', { name: 'Remove Step 2' }).click();
+  await page.mouse.click(box.x + box.width * 0.8, box.y + box.height * 0.5);
+  await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveText(['Step 1', 'Step 3', 'Step 4']);
+
+  await page.getByRole('button', { name: 'Remove Step 1' }).click();
+  await page.keyboard.press('ControlOrMeta+z');
+  await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveText(['Step 1', 'Step 3', 'Step 4']);
+  await page.getByRole('button', { name: 'Remove all' }).click();
+  await page.getByRole('button', { name: 'Undo annotation change' }).click();
+  await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveCount(3);
+  // undo walks back through the history, then has nothing left to undo
+  for (let i = 0; i < 8; i++) await page.keyboard.press('ControlOrMeta+z');
+  await expect(page.getByRole('button', { name: /^Step \d+$/ })).toHaveCount(0);
+});
+
+test('a label shrunk by long words grows back when they get shorter', async ({ page }) => {
+  await loadShot(page);
+  const box = (await page.locator('#preview').boundingBox())!;
+  await page.getByRole('radio', { name: 'Text', exact: true }).check();
+  await page.mouse.click(box.x + box.width * 0.3, box.y + box.height * 0.5);
+  const words = page.getByLabel('Label text');
+  await words.fill('Hi');
+  await expect.poll(async () => (await linkNotes(page))[0]?.s).toBe('Hi');
+  const before = (await linkNotes(page))[0];
+  await words.fill('W'.repeat(80));
+  await expect.poll(async () => (await linkNotes(page))[0]?.w).toBe(1);
+  await words.fill('Hi');
+  await expect.poll(async () => (await linkNotes(page))[0]?.w).toBeCloseTo(before.w, 3);
+  expect((await linkNotes(page))[0].h).toBeCloseTo(before.h, 3);
+});
+
+test('a right-click on the preview does not place an annotation', async ({ page }) => {
+  await loadShot(page);
+  const box = (await page.locator('#preview').boundingBox())!;
+  await page.getByRole('radio', { name: 'Step', exact: true }).check();
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5, { button: 'right' });
+  await page.mouse.click(box.x + box.width * 0.5, box.y + box.height * 0.5, { button: 'middle' });
+  await page.getByRole('radio', { name: 'Box', exact: true }).check();
+  await page.mouse.move(box.x + box.width * 0.2, box.y + box.height * 0.2);
+  await page.mouse.down({ button: 'right' });
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5, { steps: 4 });
+  await page.mouse.up({ button: 'right' });
+  await expect(page.locator('#notes-list')).toBeEmpty();
 });

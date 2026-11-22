@@ -125,6 +125,9 @@ export function handleOf(n: Note): [number, number] | null {
   return n.t === 'arrow' ? [n.x2, n.y2] : [n.x + n.w, n.y + n.h];
 }
 
+/** Number for a new step badge: one past the highest, so deleting a step never leads to a repeat. 99 at most, as in a share link. */
+export const nextStep = (notes: Note[]) => Math.min(99, Math.max(0, ...notes.filter((n) => n.t === 'step').map((n) => n.n)) + 1);
+
 /** Radius of a step badge on content that is w px wide. */
 export const stepRadius = (w: number) => Math.max(10, w * 0.018);
 

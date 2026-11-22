@@ -2,7 +2,7 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource-variable/instrument-sans';
 import './style.css';
 import { CODE_THEMES, highlight, LANGUAGES, type Highlighted } from './code';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_LABEL, moveNote, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_LABEL, moveNote, nextStep, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
 import { labelFont, labelSize, layoutCard, layoutScene } from './layout';
 import { GRADIENTS, MESHES, NOTE_COLORS, SIZE_PRESETS } from './presets';
 import { checkExportSize, contentSize, measureLabel, MONO, render, SANS, toBlob, type Assets, type Img, type Rendered } from './render';
@@ -208,9 +208,19 @@ function placeHandle() {
   el.style.top = `${canvas.offsetTop + canvas.clientTop + y * k}px`;
 }
 
+/** Undo history: the annotations as they were before each change (as JSON, so later edits cannot alter them). */
+const past: string[] = [];
+let notesNow = '[]';
+
 let urlTimer = 0;
 function commit(change?: () => void) {
   change?.();
+  const now = JSON.stringify(design.notes);
+  if (now !== notesNow) {
+    past.push(notesNow);
+    if (past.length > 200) past.shift();
+    notesNow = now;
+  }
   syncControls();
   scheduleDraw();
   clearTimeout(urlTimer);
@@ -266,6 +276,7 @@ async function useShot(file: File) {
     design.mode = 'shot';
     design.notes = [];
   });
+  past.length = 0; // the old image's annotations do not belong on the new one
 }
 
 let pickTarget: 'shot' | 'bg' = 'shot';
@@ -356,9 +367,9 @@ function editLabel() {
   const n = current();
   if (n?.t !== 'text' || !rendered) return;
   const { w, h } = rendered.card.content;
-  // keep the font size the label has now; the pill grows or shrinks around the new words
-  // shortcut: words wider than the image shrink the font, and shortening them does not grow it back (drag the handle)
-  const fs = labelFont(measureLabel(n.s ?? ''), n.w * w, n.h * h);
+  // keep the font size the label has now; the pill grows or shrinks around the new words. A pill as wide as the
+  // image was squeezed by long words, so its height (which fitLabel never squeezes) holds the size to return to
+  const fs = labelFont(measureLabel(n.s ?? ''), n.w >= 1 ? Infinity : n.w * w, n.h * h);
   n.s = labelInput.value.slice(0, MAX_LABEL);
   fitLabel(n, fs);
   commit();
@@ -371,7 +382,7 @@ function focusLabelInput() {
 
 canvas.addEventListener('pointerdown', (e) => {
   const t = tool() as NoteKind | '';
-  if (design.mode !== 'shot' || !shot) return;
+  if (design.mode !== 'shot' || !shot || e.button !== 0) return; // a right-click opens the menu; it must not draw
   const p = pointerToContent(e);
   if (!p) return;
   if (!t) {
@@ -390,7 +401,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (t === 'text') base.s = 'Label';
   selected = base;
   if (t === 'step') {
-    base.n = design.notes.filter((n) => n.t === 'step').length + 1;
+    base.n = nextStep(design.notes);
     commit(() => design.notes.push(base));
     return;
   }
@@ -454,7 +465,7 @@ canvas.addEventListener('keydown', (e) => {
     const n: Note = { t, x: 0.35, y: 0.35, x2: 0.5, y2: 0.5, w: 0.3, h: 0.3, n: 1, c: noteColor };
     if (t === 'step') {
       n.x = n.y = 0.5;
-      n.n = design.notes.filter((m) => m.t === 'step').length + 1;
+      n.n = nextStep(design.notes);
     }
     if (t === 'text') placeLabel(n, 0.35, 0.35);
     selected = n;
@@ -478,7 +489,10 @@ canvas.addEventListener('keydown', (e) => {
 });
 
 function undoNote() {
-  if (design.mode === 'shot' && design.notes.length) commit(() => design.notes.pop());
+  if (design.mode !== 'shot' || !past.length) return;
+  notesNow = past.pop()!;
+  design.notes = JSON.parse(notesNow);
+  commit();
 }
 
 // ---------- export ----------
@@ -700,6 +714,7 @@ async function start() {
   await loadHash();
   window.addEventListener('hashchange', () => loadHash().then(() => commit()));
   design = sanitize(design);
+  notesNow = JSON.stringify(design.notes);
   renderTemplates();
   syncControls();
   draw();

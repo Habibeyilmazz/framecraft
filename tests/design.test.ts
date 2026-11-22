@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_CODE, MAX_LABEL, moveNote, sanitize, toTemplate, type Note } from '../src/design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_CODE, MAX_LABEL, moveNote, nextStep, sanitize, toTemplate, type Note } from '../src/design';
 
 describe('sanitize', () => {
   it('returns defaults for junk', () => {
@@ -223,5 +223,20 @@ describe('hitNote', () => {
     const b = note({ t: 'pixel', x: 0, y: 0, w: 1, h: 1 });
     expect(hit([a, b], 500, 250)).toBe(1);
     expect(hit([], 500, 250)).toBe(-1);
+  });
+});
+
+describe('nextStep', () => {
+  const step = (n: number): Note => ({ t: 'step', x: 0, y: 0, x2: 0, y2: 0, w: 0, h: 0, n, c: '#ff4d3d' });
+
+  it('numbers past the highest step, so deleting one never makes a duplicate', () => {
+    expect(nextStep([])).toBe(1);
+    expect(nextStep([step(1), step(2)])).toBe(3);
+    expect(nextStep([step(1), step(3)])).toBe(4); // step 2 was deleted
+    expect(nextStep([step(3), { ...step(7), t: 'box' }])).toBe(4); // other annotations do not count
+  });
+
+  it('stops at 99, the most a share link keeps', () => {
+    expect(nextStep([step(99)])).toBe(99);
   });
 });
