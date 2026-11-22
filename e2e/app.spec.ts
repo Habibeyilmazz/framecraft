@@ -688,9 +688,11 @@ test('the preview redraws when a font for new characters arrives', async ({ page
     await route.continue();
   });
   await paste(page, 'Snippet', '// Привет, мир\nconst answer = 42;');
-  await page.waitForTimeout(600);
+  // wait for that font file itself: in WebKit document.fonts.ready can resolve before the load starts
+  await expect
+    .poll(() => page.evaluate(() => [...document.fonts].some((f) => f.family.includes('JetBrains') && f.unicodeRange.includes('U+400') && f.status === 'loaded')))
+    .toBe(true);
   const stale = await page.evaluate(async () => {
-    await document.fonts.ready;
     const frame = () => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done)));
     await frame();
     const c = document.querySelector<HTMLCanvasElement>('#preview')!;
