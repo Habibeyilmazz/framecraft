@@ -70,7 +70,7 @@ test('ships a strict Content-Security-Policy that blocks injected scripts', asyn
 });
 
 test('opens on a highlighted code card and detects the language', async ({ page }) => {
-  await expect(page.locator('#detected')).toHaveText(/Detected: /);
+  await expect(page.locator('#detected')).toHaveText('Detected: TypeScript'); // the sample is export.ts
   await page.getByLabel('Snippet').fill('def greet(name):\n    return f"hello {name}"\n\nprint(greet("you"))');
   await expect(page.locator('#detected')).toHaveText('Detected: Python');
   const box = (await page.locator('#preview').boundingBox())!;

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CODE_THEMES, DETECT_SAMPLE, highlight, htmlToLines, parseLineRanges } from '../src/code';
+import { defaultDesign } from '../src/design';
 
 describe('parseLineRanges', () => {
   it('reads single lines and ranges', () => {
@@ -45,6 +46,11 @@ describe('highlight', () => {
     expect(highlight('def add(a, b):\n    return a + b\n\nprint(add(1, 2))', 'auto').lang).toBe('python');
     expect(highlight('package main\n\nimport "fmt"\n\nfunc main() {\n\tfmt.Println("hi")\n}', 'auto').lang).toBe('go');
     expect(highlight('{\n  "name": "framecraft",\n  "private": true\n}', 'auto').lang).toBe('json');
+  });
+  it('detects the sample the app opens with as TypeScript, as its file name says', () => {
+    const d = defaultDesign();
+    expect(d.code.title).toBe('export.ts');
+    expect(highlight(d.code.text, 'auto').lang).toBe('typescript');
   });
   it('keeps every character of the source, with tabs expanded', () => {
     const src = 'fn main() {\n\tlet x = "<&>";\n}';

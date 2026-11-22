@@ -60,8 +60,11 @@ export interface Design {
   notes: Note[];
 }
 
+// it must auto-detect as TypeScript, the language its file name (export.ts) promises (tests/code.test.ts)
 export const SAMPLE_CODE = `// Pick a frame, drop a screenshot, ship the launch post.
-export async function exportImage(design: Design, scale = 2) {
+type Scale = 1 | 2 | 3;
+
+export async function exportImage(design: Design, scale: Scale = 2) {
   const canvas = render(design, { scale });
   const blob = await new Promise<Blob | null>((done) =>
     canvas.toBlob(done, 'image/png'),
@@ -95,7 +98,7 @@ export function defaultDesign(): Design {
       theme: 'framecraft',
       fontSize: 15,
       lineNumbers: true,
-      highlight: '3-5',
+      highlight: '5-7',
       title: 'export.ts',
       bar: true,
     },
