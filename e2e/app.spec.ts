@@ -601,3 +601,21 @@ test.describe('on a touch screen', () => {
     await expect.poll(async () => (await linkNotes(page)).map((n) => [n.w, n.h].map((v) => Math.round(v * 10) / 10))).toEqual([[0.2, 0.2]]);
   });
 });
+
+test('a photo stored sideways (EXIF orientation) is shown upright', async ({ page }) => {
+  // a 300 x 100 JPEG whose EXIF says "rotate 90° clockwise to view", as phone cameras write
+  const jpeg = await page.evaluate(async () => {
+    const c = new OffscreenCanvas(300, 100);
+    c.getContext('2d')!.fillRect(0, 0, 300, 100);
+    const bytes = new Uint8Array(await (await c.convertToBlob({ type: 'image/jpeg' })).arrayBuffer());
+    // APP1 segment: "Exif", big-endian TIFF header, one IFD entry: Orientation (0x0112) = 6
+    const exif = [0xff, 0xe1, 0, 34, ...'Exif'.split('').map((ch) => ch.charCodeAt(0)), 0, 0, 0x4d, 0x4d, 0, 0x2a, 0, 0, 0, 8, 0, 1, 0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, 6, 0, 0, 0, 0, 0, 0];
+    return btoa(String.fromCharCode(...bytes.subarray(0, 2), ...exif, ...bytes.subarray(2)));
+  });
+  await page.getByRole('radio', { name: 'Screenshot', exact: true }).check();
+  await page.setInputFiles('#file', { name: 'photo.jpg', mimeType: 'image/jpeg', buffer: Buffer.from(jpeg, 'base64') });
+  await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await page.getByLabel('Padding').fill('0');
+  await expect(page.locator('#readout')).toHaveText(/^100 × 300 /);
+});
