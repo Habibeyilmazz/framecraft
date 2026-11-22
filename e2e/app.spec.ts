@@ -800,6 +800,12 @@ test('main journey: frame a screenshot, cover a secret, caption it, download it,
   await expect(fresh.getByRole('heading', { name: 'Add a screenshot' })).toBeVisible();
   await expect(fresh.getByRole('textbox', { name: 'Text' })).toHaveValue('Deploys at a glance');
   await expect(fresh.getByRole('radio', { name: 'None', exact: true }).first()).toBeChecked();
+  // the first image added to the opened link gets the link's annotations; replacing that image clears them
+  await fresh.setInputFiles('#file', SAMPLE);
+  await expect(fresh.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible(); // the image has loaded
+  await expect(fresh.getByRole('button', { name: /^(Cover|Arrow) 1$/ })).toHaveText(['Cover 1', 'Arrow 1']);
+  await fresh.setInputFiles('#file', SAMPLE);
+  await expect(fresh.getByRole('button', { name: /^(Cover|Arrow) 1$/ })).toHaveCount(0);
 });
 
 test('the preview redraws when a font for new characters arrives', async ({ page }) => {

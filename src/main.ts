@@ -311,12 +311,14 @@ async function loadImage(file: File): Promise<Img | null> {
 async function useShot(file: File) {
   const img = await loadImage(file);
   if (!img) return;
+  // the old image's annotations do not belong on a new one; with no image yet, they came from a link or a reload
+  const replacing = !!shot;
   shot = img;
   commit(() => {
     design.mode = 'shot';
-    design.notes = [];
+    if (replacing) design.notes = [];
   });
-  past.length = 0; // the old image's annotations do not belong on the new one
+  past.length = 0;
 }
 
 let pickTarget: 'shot' | 'bg' = 'shot';
