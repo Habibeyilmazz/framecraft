@@ -5,7 +5,40 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Round 5 ("tests", a reliability pass). Each bug below was reproduced first, then got a failing test, then the fix:
+  - **Undo** removed the newest annotation whatever the last action was, so Ctrl+Z after deleting one deleted
+    another. It now steps back through a history of the annotations (add, move, resize, edit, remove, remove all),
+    which is cleared when a new image is placed. The Undo button is now labelled "Undo annotation change".
+  - Deleting a step badge and adding another repeated a number (1, 3, 3). New steps count from the highest
+    (`nextStep` in `src/design.ts`, unit-tested).
+  - A right-click or middle-click on the preview placed an annotation.
+  - A label squeezed by words wider than the image kept the small font after the words got shorter (the gap the
+    last round left open). The pill's height remembers the size.
+  - On a touch screen, a second finger started a second drawing and left a stray annotation. Other pointers are
+    ignored until the first lifts (e2e test sends real multi-touch through the Chrome DevTools Protocol).
+  - Removing an annotation from the list dropped keyboard focus to the page. Focus moves to the next Remove button,
+    or to the preview when the list is empty.
+  - Long captions, addresses and window titles were shortened one UTF-16 unit at a time, so an emoji could be cut in
+    half and draw as a replacement box. `fitText` (now in `src/layout.ts`, unit-tested) cuts between graphemes.
+  - Code in Cyrillic, Greek or Vietnamese needs a font file the browser fetches on first use. The preview drew
+    fallback glyphs and kept them until the next edit (so an export right then had the wrong font). `draw()` now
+    asks `document.fonts.load` for pending faces and redraws when they land. WebKit needed this exact shape: it
+    fires no `loadingdone` for such a face and its `fonts.check()` calls a face that is still loading ready (both
+    found from CI timelines, since WebKit is not installed locally).
+  - An image dropped outside the stage (on the settings panel or header) made the browser navigate to the file,
+    losing the screenshot and its annotations. File drops are taken anywhere on the page; text still drops into fields.
+- README: "works offline" overclaimed. With no service worker the page does not load offline; after loading it keeps
+  working, except that a not-yet-fetched non-Latin code font falls back to a system font.
+
 ### Added
+
+- Round 5: an end-to-end test of the main journey (load, frame, cover a secret, arrow, caption, download at 2x, open
+  the share link) that checks the downloaded PNG itself: its size, and the secret as one solid colour in the file.
+  Also a regression test for a sideways phone photo (EXIF orientation 6 is shown upright in all three engines).
+- The huge-snippet test pastes with one input event; Playwright's `fill` sent 12 000 (one per character, each
+  re-highlighting), which was most of the suite's time. Local e2e run: about 12 s before, 6 s now.
 
 - Round 4 ("feature"): **text labels**, the first item on the roadmap and the one thing a launch or README image
   kept needing (step badges and arrows had no words to point at). The Text tool places a one-line label on a pill
@@ -18,8 +51,8 @@ All notable changes to this project are documented here. The format follows
   placement and delete. The README screenshot now shows a label (made by `scripts/readme-images.mjs`).
 - After a Codex second-opinion review of the label work: clicking a second label while the words box still had
   focus left the box showing the first label's words (fixed, with an e2e test); Enter that confirms an IME
-  composition no longer jumps back to the preview. Known and left: words wider than the image shrink the font, and
-  shortening them again does not grow it back (drag the handle).
+  composition no longer jumps back to the preview. (Left then, fixed in round 5: words wider than the image shrank
+  the font for good.)
 
 ### Security
 
@@ -67,6 +100,18 @@ All notable changes to this project are documented here. The format follows
 
 ### Notes for the next person
 
+- Round 5 ("tests"): tried to break the app with odd input. Checked and found fine, no change: empty, whitespace,
+  control-character, RTL, emoji and 20 000-character snippets; junk "Highlight lines"; share links whose JSON is
+  `null`, a string, an array or wrongly typed fields; malformed templates in localStorage; 1x1, 12000x1, 1x4000 and
+  fully transparent images; truncated, empty and SVG files (clear error); layouts at 320 px and landscape phone.
+  Previous round's gaps re-checked: the shrinking label font was a real bug (fixed); one-line labels and no
+  recolouring after placing are design choices, still on the Roadmap. Typing in a 20 000-character snippet costs
+  about 45 ms a keystroke (auto-detect runs every language); 6000 one-character lines take about 400 ms, because
+  highlight.js auto-detect is roughly quadratic there. Not changed: a real paste is one input event, and only
+  Playwright's per-character `fill` made it look like a freeze. Undo keeps one history entry per keystroke while
+  typing a label's words. A few commits titled "Temporary: log ..." are diagnostics pushed to read WebKit's
+  behaviour on CI; the commit after each removes them. No axe run this round (no markup changed apart from the Undo
+  label).
 - Round 4 ("feature"): picked text labels after using the app as a newcomer: every other gap (custom sizes, SVG for
   screenshots, more frames) has a workaround, but there was no way to put a word on a screenshot. Not built, on
   purpose: multi-line labels, a font or size picker, and recolouring a placed annotation (the colour swatches only
