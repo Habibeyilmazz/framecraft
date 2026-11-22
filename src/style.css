@@ -555,7 +555,8 @@ textarea:hover {
 }
 input[type='range'] {
   width: 100%;
-  margin: 4px 0;
+  height: 24px; /* the native 16 px is a small touch target; same box as before, which had 4px margins */
+  margin: 0;
   accent-color: var(--mat);
 }
 @media (prefers-color-scheme: dark) {
