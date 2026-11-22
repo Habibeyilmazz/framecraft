@@ -33,8 +33,8 @@ npm run dev        # then open http://localhost:4210
 
 - Drop an image on the page, paste it with Ctrl+V / ⌘V, or pick a file (PNG, JPEG, WebP, GIF, AVIF, SVG). An SVG
   is drawn 2000 px on its long side, so a diagram stays sharp on a 2x export; its scripts never run and it loads
-  nothing from the network. Safari's engine cannot export an SVG with HTML inside (`foreignObject`), so there it is
-  refused with a message; use a PNG of it instead.
+  nothing from the network. Chrome and Safari cannot export an SVG with HTML inside (`foreignObject`), so there it is
+  refused with a message (Firefox can); use a PNG of it instead.
 - Frames: none, browser window (with an editable address), macOS window (with a title), phone. Light or dark windows.
 - Crop: pick Crop and the whole image shows with the crop outlined; drag over the part to keep. From the keyboard,
   arrow keys move the crop, Alt+arrow keys resize it and Delete shows the whole image again; so does

@@ -305,7 +305,8 @@ test('an SVG with HTML inside (foreignObject) either exports or is refused with 
   await page.setInputFiles('#file', { name: 'html.svg', mimeType: 'image/svg+xml', buffer: svg });
   const toolbar = page.getByRole('toolbar', { name: 'Annotation tools' });
   await expect(toolbar.or(page.locator('#toast'))).toBeVisible();
-  expect(await toolbar.isVisible(), `${browserName} loaded it`).toBe(false); // Chromium taints the canvas (seen locally)
+  // seen in CI: Chromium and WebKit taint a canvas it is drawn on, Firefox does not
+  expect(await toolbar.isVisible(), `${browserName} loaded it`).toBe(browserName === 'firefox');
   if (await toolbar.isVisible()) {
     // loaded, so it must not taint the canvas: a PNG exports
     const dl = page.waitForEvent('download');

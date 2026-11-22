@@ -20,12 +20,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Fixed
 
-- Round 15: **an SVG with HTML inside (`foreignObject`) could block every export in Safari** (round 14's reported
-  gap). Safari's engine treats such an SVG as cross-origin and taints the canvas it is drawn on, after which PNG
-  export, copying and pixelation fail. `decodeSvg` now reads one pixel back after drawing; if the canvas is tainted,
-  the file is refused with "This browser cannot export an SVG with HTML inside it". Chromium draws such SVGs cleanly
-  and keeps them. The e2e test accepts either outcome but never a loaded image that cannot export; WebKit runs it
-  only in CI (no WebKit locally), and Safari itself was not tried by hand.
+- Round 15: **an SVG with HTML inside (`foreignObject`)**, round 14's untested gap. Chromium and WebKit (seen in CI)
+  taint a canvas such an SVG is drawn on, so it could never be exported. Chromium already refused it, but only with
+  "could not be read as an image"; what WebKit did before is not known. `decodeSvg` now reads one pixel back after
+  drawing and, if the canvas is tainted, refuses the file with "This browser cannot export an SVG with HTML inside
+  it. Use a PNG of it instead." Firefox does not taint it, so there it loads and exports. The e2e test pins each
+  engine's outcome and checks a loaded one exports. Real Safari was not tried by hand.
 - Round 14 ("launch"): checked the two reported gaps that were bugs first, each with an e2e test seen to fail
   before the fix:
   - **SVG files were refused as a screenshot** (or a background image): `createImageBitmap` does not decode them.
