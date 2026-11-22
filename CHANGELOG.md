@@ -5,7 +5,27 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Round 9 ("first-run": a fresh clone of GitHub `main`, README quickstart followed literally, then a read of the code).
+  The quickstart itself worked (`npm install`, `npm run dev`, typecheck, 62 unit and 37 e2e tests green). Fixed:
+  - **A share link's annotations never showed.** Opening a link (or reloading the page) listed its annotations, but
+    adding the screenshot cleared them. Now only *replacing* an image clears them; the first image added gets the
+    link's annotations. The main-journey e2e test adds the image on the opened link; checked to fail before the fix.
+    (The old test passed by accident: the list showed the annotations before the image had loaded.)
+  - **The opening card said "Detected: JavaScript" under the file name `export.ts`.** highlight.js scored the sample
+    22 for JavaScript and 21 for TypeScript. The sample now has a `type` alias and detects as TypeScript (unit test,
+    and the e2e test now expects the exact text). Highlighted lines moved from 3-5 to 5-7 to stay on the same code.
+    README hero, code-mode screenshot and demo GIF regenerated from the running app with the new sample.
+
 ### Changed
+
+- Round 9: README and CONTRIBUTING said "Node.js 22 or newer", but Vite needs 22.12+ and Vitest does not support
+  23 or 25. They now say so, and `package.json` declares `engines` so npm warns on an unsupported Node.
+- Round 9: the README says the first `npm run e2e` needs `npx playwright install chromium` (checked: without it the
+  run stops with "Executable doesn't exist"); the share-link paragraph says what happens to annotations.
+- Round 9, not changed: Codex was out of quota again, so the review is by hand. Only Chromium is installed locally;
+  Firefox and WebKit ran in CI. No manual Safari, Firefox or screen-reader pass yet.
 
 - Round 8 ("perf-a11y"). Measured first (built page on `vite preview`, Playwright Chromium, M-series Mac; "4x" means
   DevTools CPU throttling at 4x), then fixed the two slow paths found:
