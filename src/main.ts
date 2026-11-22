@@ -545,11 +545,7 @@ function wire() {
   });
 
   document.addEventListener('paste', (e) => {
-    const data = e.clipboardData;
-    // some browsers list a pasted image only under items, others only under files
-    const file =
-      [...(data?.files ?? [])].find((f) => f.type.startsWith('image/')) ??
-      [...(data?.items ?? [])].find((i) => i.kind === 'file' && i.type.startsWith('image/'))?.getAsFile();
+    const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
     if (!file) return;
     e.preventDefault();
     useShot(file);

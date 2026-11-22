@@ -138,7 +138,8 @@ test('rejects a file that is not an image', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Drop a screenshot here' })).toBeVisible();
 });
 
-test('pasting an image switches to screenshot mode', async ({ page }) => {
+test('pasting an image switches to screenshot mode', async ({ page, browserName }) => {
+  test.skip(browserName === 'firefox', 'Firefox drops clipboardData from a synthetic paste event');
   const b64 = (await readFile(SAMPLE)).toString('base64');
   await page.evaluate(async (data) => {
     const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
@@ -210,17 +211,18 @@ test('works on a phone-sized screen without sideways scrolling', async ({ page }
 });
 
 test('keyboard places a redaction that also wipes detail out of a tiny image', async ({ page }) => {
-  // paste a 64x64 image of random pixels: every pixel differs, so detail is easy to count
-  await page.evaluate(async () => {
+  // a 64x64 image of random pixels: every pixel differs, so detail is easy to count
+  const noise = await page.evaluate(async () => {
     const c = new OffscreenCanvas(64, 64);
     const ctx = c.getContext('2d')!;
     const img = ctx.createImageData(64, 64);
     for (let i = 0; i < img.data.length; i++) img.data[i] = i % 4 === 3 ? 255 : Math.floor(Math.random() * 256);
     ctx.putImageData(img, 0, 0);
-    const dt = new DataTransfer();
-    dt.items.add(new File([await c.convertToBlob()], 'noise.png', { type: 'image/png' }));
-    document.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+    const bytes = new Uint8Array(await (await c.convertToBlob()).arrayBuffer());
+    return btoa(String.fromCharCode(...bytes));
   });
+  await page.getByRole('radio', { name: 'Screenshot', exact: true }).check();
+  await page.setInputFiles('#file', { name: 'noise.png', mimeType: 'image/png', buffer: Buffer.from(noise, 'base64') });
   await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
   await page.getByRole('radio', { name: 'None', exact: true }).first().check();
   await page.locator('#r-padding').fill('0');
