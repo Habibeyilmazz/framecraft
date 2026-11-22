@@ -132,10 +132,12 @@ function noteName(n: Note) {
     : `${NAMES[n.t]} ${design.notes.slice(0, i + 1).filter((m) => m.t === n.t).length}`;
 }
 
+/** The annotation the colour swatches edit: the selected one, while the Pointer tool is active. */
+const recolourable = (): Note | undefined => (design.mode === 'shot' && shot && !tool() ? current() : undefined);
+
 /** With the Pointer tool the swatches show (and set) the selected annotation's colour; with a drawing tool, the next one's. */
 function syncSwatches() {
-  const note = design.mode === 'shot' && shot && !tool() ? current() : undefined;
-  const c = note?.c ?? noteColor;
+  const c = recolourable()?.c ?? noteColor;
   for (const el of $$<HTMLInputElement>('input[name="note-color"]')) el.checked = el.value === c;
 }
 
@@ -679,7 +681,7 @@ function wire() {
     const el = e.target as HTMLInputElement;
     if (el.name === 'note-color') {
       noteColor = el.value;
-      const note = design.mode === 'shot' && shot && !tool() ? current() : undefined;
+      const note = recolourable();
       if (note && note.c !== el.value) {
         commit(() => (note.c = el.value));
         toast(`${noteName(note)} recoloured.`);
