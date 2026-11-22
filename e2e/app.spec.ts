@@ -933,24 +933,28 @@ test('the pointer cannot drag an annotation, or its handle, out of the crop', as
     await page.mouse.move(...(await at(...to)), { steps: 4 });
     await page.mouse.up();
   };
+  await drawn(page); // the canvas changes size with the frame
   await page.getByRole('radio', { name: 'Crop', exact: true }).check();
-  await dragOn([0.5, 0], [1, 1]); // the right half
+  await dragOn([0.5, 0.1], [1.3, 1.3]); // the right half, less the top tenth (a drag past the image stops at its edge)
   await expect.poll(async () => (await linkDesign(page)).crop.x).toBeCloseTo(0.5, 2);
+  const c = (await linkDesign(page)).crop;
   await page.getByRole('radio', { name: 'Box', exact: true }).check();
   await drawn(page); // the preview now shows the crop alone
   await dragOn([0.4, 0.4], [0.6, 0.6]);
-  await expect.poll(async () => (await linkNotes(page))[0]?.x).toBeCloseTo(0.7, 2);
+  await expect.poll(async () => (await linkNotes(page))[0]?.x).toBeCloseTo(c.x + 0.4 * c.w, 2);
   await page.getByRole('radio', { name: 'Pointer', exact: true }).check();
   await drawn(page);
   // grab the box's left edge and throw it far past the crop's left edge (off the canvas)
   await dragOn([0.4, 0.5], [-0.5, 0.5]);
-  await expect.poll(async () => (await linkNotes(page))[0].x).toBeCloseTo(0.5, 2);
-  // the resize handle stops at the crop's bottom-right corner too
-  const [x, y] = [(await linkNotes(page))[0].x + (await linkNotes(page))[0].w, 0.6];
-  await dragOn([(x - 0.5) * 2, y], [1.5, 1.5]);
-  await expect.poll(async () => (await linkNotes(page))[0].w).toBeCloseTo(0.5, 2);
+  await expect.poll(async () => (await linkNotes(page))[0].x).toBeCloseTo(c.x, 2);
+  // the resize handle (bottom-right corner) stops at the crop's bottom-right corner too
+  const b = (await linkNotes(page))[0];
+  await dragOn([(b.x + b.w - c.x) / c.w, (b.y + b.h - c.y) / c.h], [1.5, 1.5]);
+  await expect.poll(async () => (await linkNotes(page))[0].w).toBeCloseTo(c.x + c.w - b.x, 2);
   const n = (await linkNotes(page))[0];
-  expect([n.x, n.y, n.x + n.w, n.y + n.h].map((v) => v.toFixed(2))).toEqual(['0.50', '0.40', '1.00', '1.00']);
+  expect(n.x).toBeCloseTo(c.x, 2);
+  expect(n.y).toBeCloseTo(b.y, 2);
+  expect(n.y + n.h).toBeCloseTo(c.y + c.h, 2);
 });
 
 test('a right-click on the preview does not place an annotation', async ({ page }) => {
