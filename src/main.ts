@@ -844,7 +844,7 @@ function wire() {
   document.addEventListener('paste', (e) => {
     const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
     // office and spreadsheet apps copy a picture of the selection along with its text: in a text field, paste the text
-    const typing = (e.target as HTMLElement).closest('input[type="text"], input[type="number"], textarea');
+    const typing = e.target instanceof Element && e.target.closest('input[type="text"], input[type="number"], textarea');
     if (!file || (typing && e.clipboardData?.types.includes('text/plain'))) return;
     e.preventDefault();
     useShot(file);
