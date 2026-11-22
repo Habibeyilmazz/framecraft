@@ -293,6 +293,22 @@ test('templates save the look and apply it later', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Apply Tight gradient' })).toHaveCount(0);
 });
 
+test('a browser that refuses storage gets an error, not "Saved" or "Deleted"', async ({ page }) => {
+  await page.getByLabel('Name', { exact: true }).fill('Kept');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Apply Kept' })).toBeVisible();
+  // storage full, or blocked by the browser's privacy settings
+  await page.evaluate(() => (Storage.prototype.setItem = () => { throw new DOMException('full', 'QuotaExceededError'); }));
+  await page.getByLabel('Name', { exact: true }).fill('Lost');
+  await page.getByRole('button', { name: 'Save', exact: true }).click();
+  await expect(page.locator('#toast')).toHaveText('This browser is not letting framecraft save templates.');
+  await expect(page.getByRole('button', { name: 'Apply Lost' })).toHaveCount(0);
+  await expect(page.getByLabel('Name', { exact: true })).toHaveValue('Lost'); // the name is kept to try again
+  await page.getByRole('button', { name: 'Delete Kept' }).click();
+  await expect(page.locator('#toast')).toHaveText('This browser is not letting framecraft save templates.');
+  await expect(page.getByRole('button', { name: 'Apply Kept' })).toBeVisible();
+});
+
 test('copies the image to the clipboard', async ({ page, context, browserName }) => {
   test.skip(browserName !== 'chromium', 'only Chromium lets a test grant clipboard-read');
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);

@@ -739,11 +739,14 @@ function readTemplates(): Stored[] {
     return [];
   }
 }
-function writeTemplates(list: Stored[]) {
+/** Whether the list was stored; a full or blocked storage gets an error toast instead. */
+function writeTemplates(list: Stored[]): boolean {
   try {
     localStorage.setItem(TEMPLATE_KEY, JSON.stringify(list));
+    return true;
   } catch {
     toast('This browser is not letting framecraft save templates.', true);
+    return false;
   }
 }
 function renderTemplates() {
@@ -763,7 +766,7 @@ function renderTemplates() {
       } else if (act === 'del') {
         const list = readTemplates();
         list.splice(i, 1);
-        writeTemplates(list);
+        if (!writeTemplates(list)) return;
         renderTemplates();
         toast(`Deleted ${t.name}.`);
       }
@@ -824,7 +827,7 @@ function wire() {
     const name = input.value.trim();
     if (!name) return;
     const list = readTemplates().filter((t) => t.name !== name);
-    writeTemplates([...list, { name, style: toTemplate(design) }]);
+    if (!writeTemplates([...list, { name, style: toTemplate(design) }])) return;
     input.value = '';
     renderTemplates();
     toast(`Saved ${name}.`);
