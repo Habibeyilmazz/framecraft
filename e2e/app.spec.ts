@@ -421,3 +421,62 @@ test('the selected annotation has a handle that resizes it with the mouse', asyn
   });
   expect(kept).toBeGreaterThan(3);
 });
+
+test('text labels: click to place, type the words, and edit them from the keyboard', async ({ page }) => {
+  await page.getByLabel('Padding').fill('0');
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  await drawn(page);
+  const box = (await page.locator('#preview').boundingBox())!;
+  const at = (u: number, v: number) => [box.x + box.width * u, box.y + box.height * v] as const;
+  /** Clearly red pixels in a strip of the preview from u0 to u1 at height v. */
+  const redStrip = (u0: number, u1: number, v: number) =>
+    page.evaluate(([u0, u1, v]) => {
+      const c = document.querySelector<HTMLCanvasElement>('#preview')!;
+      const d = c.getContext('2d')!.getImageData(u0 * c.width, v * c.height - 2, (u1 - u0) * c.width, 4).data;
+      let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (d[i] > 200 && d[i + 1] < 110 && d[i + 2] < 110) n++;
+      return n;
+    }, [u0, u1, v]);
+
+  const words = page.getByLabel('Label text');
+  await expect(words).toBeHidden();
+  await page.getByRole('radio', { name: 'Text', exact: true }).check();
+  await page.mouse.click(...at(0.3, 0.6));
+  // the new label's words are selected, ready to be typed over
+  await expect(words).toBeFocused();
+  await expect(words).toHaveValue('Label');
+  await page.keyboard.type('Ship it');
+  await expect(page.getByRole('button', { name: 'Text “Ship it”', exact: true })).toBeVisible();
+  await drawn(page);
+  const short = await redStrip(0.3, 0.6, 0.6);
+  expect(short).toBeGreaterThan(20);
+  expect(await redStrip(0.45, 0.6, 0.6)).toBe(0);
+
+  // longer words widen the pill at the same font size
+  await words.fill('Ship it today, the stats are live');
+  await drawn(page);
+  expect(await redStrip(0.45, 0.6, 0.6)).toBeGreaterThan(20);
+
+  // Enter goes back to the preview, where arrow keys move the label and Delete removes it
+  await words.press('Enter');
+  await expect(page.locator('#preview')).toBeFocused();
+  await page.keyboard.press('Shift+ArrowDown');
+  await page.keyboard.press('Shift+ArrowDown');
+  await drawn(page);
+  expect(await redStrip(0.3, 0.6, 0.6)).toBe(0);
+  expect(await redStrip(0.3, 0.6, 0.7)).toBeGreaterThan(20);
+
+  // the keyboard can place one too
+  await page.keyboard.press('Enter');
+  await expect(words).toBeFocused();
+  await page.keyboard.type('Second');
+  await words.press('Escape');
+  await expect(page.getByRole('button', { name: 'Text “Second”', exact: true })).toBeVisible();
+  await page.keyboard.press('Delete');
+  await expect(page.getByRole('button', { name: 'Text “Second”', exact: true })).toHaveCount(0);
+
+  // with another tool picked, the words box hides
+  await page.getByRole('radio', { name: 'Arrow', exact: true }).check();
+  await expect(words).toBeHidden();
+});

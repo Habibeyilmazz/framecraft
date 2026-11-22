@@ -366,6 +366,11 @@ legend {
   background: var(--mat);
   color: #fff;
 }
+.label-field input {
+  width: 190px;
+  min-height: 34px;
+  font-weight: 550;
+}
 
 .canvas-wrap {
   grid-row: 2;

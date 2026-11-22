@@ -1,6 +1,6 @@
 import { CODE_THEMES, parseLineRanges, type Highlighted } from './code';
 import { stepRadius, type Design, type Note } from './design';
-import { codeMetrics, layoutCard, layoutScene, shotDisplaySize, type Box, type CardLayout, type CodeMetrics, type Scene } from './layout';
+import { codeMetrics, labelFont, layoutCard, layoutScene, shotDisplaySize, type Box, type CardLayout, type CodeMetrics, type Scene } from './layout';
 import { applyH, homography, invert3, projectCard, type Mat3, type ProjPt } from './perspective';
 import { contrastInk, GRADIENTS, gradientLine, MESHES, meshBlobs, SHADOW_PRESETS } from './presets';
 
@@ -24,6 +24,16 @@ export function measureCode(fontSize: number): (s: string) => number {
   scratch.font = `400 ${fontSize}px ${MONO}`;
   const ctx = scratch;
   return (s) => ctx.measureText(s).width;
+}
+
+const LABEL_WEIGHT = 600;
+let labelCtx: CanvasRenderingContext2D | undefined; // its own, so it never changes the font measureCode's closure uses
+
+/** Width of a label's text at a 1 px font (measured at 100 px, where canvas metrics are precise). */
+export function measureLabel(s: string): number {
+  labelCtx ??= document.createElement('canvas').getContext('2d')!;
+  labelCtx.font = `${LABEL_WEIGHT} 100px ${SANS}`;
+  return labelCtx.measureText(s).width / 100;
 }
 
 export function codeLayout(d: Design, hl: Highlighted): CodeMetrics {
@@ -216,7 +226,7 @@ export function redact(img: Img, notes: Note[]): Img {
   return out;
 }
 
-/** Arrows, boxes and step badges, drawn over the (already redacted) image. */
+/** Arrows, boxes, step badges and text labels, drawn over the (already redacted) image. */
 function drawNotes(ctx: Ctx, notes: Note[], c: Box) {
   const unit = Math.max(2, c.w * 0.005);
   for (const n of notes) {
@@ -260,6 +270,22 @@ function drawNotes(ctx: Ctx, notes: Note[], c: Box) {
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(String(n.n), x, y + r * 0.04);
+    } else if (n.t === 'text') {
+      const x = c.x + n.x * c.w, y = c.y + n.y * c.h, w = n.w * c.w, h = n.h * c.h;
+      const text = n.s ?? '';
+      const fs = labelFont(measureLabel(text), w, h);
+      ctx.beginPath();
+      roundRect(ctx, x, y, w, h, fs * 0.45);
+      ctx.fill();
+      // a hairline keeps a white label visible on a white screenshot
+      ctx.lineWidth = Math.max(1, fs * 0.05);
+      ctx.strokeStyle = contrastInk(n.c) === '#ffffff' ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.18)';
+      ctx.stroke();
+      ctx.fillStyle = contrastInk(n.c);
+      ctx.font = `${LABEL_WEIGHT} ${fs}px ${SANS}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, x + w / 2, y + h / 2 + fs * 0.04);
     }
   }
 }

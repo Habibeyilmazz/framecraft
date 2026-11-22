@@ -47,6 +47,16 @@ export function shotDisplaySize(iw: number, ih: number): { w: number; h: number 
   return { w: Math.max(1, Math.round(iw * s)), h: Math.max(1, Math.round(ih * s)) };
 }
 
+// A text label is a one-line pill: half an em of padding each side, 1.6 em tall.
+const LABEL_PAD = 0.5;
+const LABEL_H = 1.6;
+
+/** Font size that fits a label inside a w x h box; w1 is the text's width at a 1 px font. */
+export const labelFont = (w1: number, w: number, h: number) => Math.max(0, Math.min(h / LABEL_H, w / (w1 + 2 * LABEL_PAD)));
+
+/** The box a label needs at font size fs (the inverse of labelFont). */
+export const labelSize = (w1: number, fs: number) => ({ w: fs * (w1 + 2 * LABEL_PAD), h: fs * LABEL_H });
+
 export function codeMetrics(lines: string[], fontSize: number, lineNumbers: boolean, measure: (s: string) => number): CodeMetrics {
   const fs = fontSize;
   const lh = Math.round(fs * 1.7);

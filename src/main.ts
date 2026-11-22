@@ -2,10 +2,10 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource-variable/instrument-sans';
 import './style.css';
 import { CODE_THEMES, highlight, LANGUAGES, type Highlighted } from './code';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, moveNote, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
-import { layoutCard, layoutScene } from './layout';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_LABEL, moveNote, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
+import { labelFont, labelSize, layoutCard, layoutScene } from './layout';
 import { GRADIENTS, MESHES, NOTE_COLORS, SIZE_PRESETS } from './presets';
-import { checkExportSize, contentSize, MONO, render, SANS, toBlob, type Assets, type Img, type Rendered } from './render';
+import { checkExportSize, contentSize, measureLabel, MONO, render, SANS, toBlob, type Assets, type Img, type Rendered } from './render';
 import { codeToSvg } from './svg';
 
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -124,10 +124,11 @@ function syncControls() {
 }
 
 function renderNotesList() {
+  syncLabelInput();
   const host = $('#notes-list');
   host.replaceChildren();
   if (design.mode !== 'shot' || !design.notes.length) return;
-  const names: Record<NoteKind, string> = { arrow: 'Arrow', box: 'Box', blur: 'Blur', pixel: 'Pixelate', cover: 'Cover', step: 'Step' };
+  const names: Record<NoteKind, string> = { arrow: 'Arrow', box: 'Box', blur: 'Blur', pixel: 'Pixelate', cover: 'Cover', step: 'Step', text: 'Text' };
   const head = document.createElement('div');
   head.className = 'notes-head';
   head.innerHTML = `<span>Annotations</span><button type="button" class="link-btn">Remove all</button>`;
@@ -137,7 +138,10 @@ function renderNotesList() {
     const li = document.createElement('li');
     li.innerHTML = `<i class="dot"></i><button type="button" class="link-btn note-name"></button><button type="button" class="link-btn">Remove</button>`;
     li.querySelector<HTMLElement>('.dot')!.style.background = n.c;
-    const label = n.t === 'step' ? `Step ${n.n}` : `${names[n.t]} ${design.notes.slice(0, i + 1).filter((m) => m.t === n.t).length}`;
+    const label =
+      n.t === 'step' ? `Step ${n.n}`
+      : n.t === 'text' ? `Text “${(n.s ?? '').slice(0, 24)}”`
+      : `${names[n.t]} ${design.notes.slice(0, i + 1).filter((m) => m.t === n.t).length}`;
     const [pick, remove] = li.querySelectorAll('button');
     pick.textContent = label;
     pick.title = 'Select, then use the arrow keys on the preview';
@@ -312,6 +316,55 @@ function pointerToContent(e: PointerEvent): [number, number] | null {
 }
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
+// ---------- text labels ----------
+
+const labelInput = $<HTMLInputElement>('#label-text');
+
+/** Size a text label to fit its words at font size fs (content px), shifting it left or up to stay on the image. */
+function fitLabel(n: Note, fs: number) {
+  if (!rendered) return;
+  const { w, h } = rendered.card.content;
+  const size = labelSize(measureLabel(n.s ?? ''), fs);
+  n.w = Math.min(1, size.w / w);
+  n.h = Math.min(1, size.h / h);
+  n.x = Math.min(n.x, 1 - n.w);
+  n.y = Math.min(n.y, 1 - n.h);
+}
+
+/** A new label: about the size of a step badge's number, centred vertically on (x, y). */
+function placeLabel(n: Note, x: number, y: number) {
+  const w = rendered?.card.content.w ?? 1000;
+  const fs = Math.max(12, w * 0.024);
+  n.s = 'Label';
+  n.x = x;
+  n.y = Math.max(0, y - (fs * 0.8) / (rendered?.card.content.h ?? 1));
+  fitLabel(n, fs);
+}
+
+/** The label text box shows while a text label is selected, so typing edits its words. */
+function syncLabelInput() {
+  const n = current();
+  const on = design.mode === 'shot' && !!shot && n?.t === 'text' && (tool() === '' || tool() === 'text');
+  $('#label-field').hidden = !on;
+  if (on && document.activeElement !== labelInput) labelInput.value = n.s ?? '';
+}
+
+function editLabel() {
+  const n = current();
+  if (n?.t !== 'text' || !rendered) return;
+  const { w, h } = rendered.card.content;
+  // keep the font size the label has now; the pill grows or shrinks around the new words
+  const fs = labelFont(measureLabel(n.s ?? ''), n.w * w, n.h * h);
+  n.s = labelInput.value.slice(0, MAX_LABEL);
+  fitLabel(n, fs);
+  commit();
+}
+
+function focusLabelInput() {
+  labelInput.focus();
+  labelInput.select();
+}
+
 canvas.addEventListener('pointerdown', (e) => {
   const t = tool() as NoteKind | '';
   if (design.mode !== 'shot' || !shot) return;
@@ -330,6 +383,7 @@ canvas.addEventListener('pointerdown', (e) => {
   if (p[0] < 0 || p[0] > 1 || p[1] < 0 || p[1] > 1) return;
   const [x, y] = p;
   const base: Note = { t, x, y, x2: x, y2: y, w: 0, h: 0, n: 1, c: noteColor };
+  if (t === 'text') base.s = 'Label';
   selected = base;
   if (t === 'step') {
     base.n = design.notes.filter((n) => n.t === 'step').length + 1;
@@ -376,9 +430,12 @@ function endDraft() {
   if (!draft) return;
   const n = draft.note;
   const tiny = n.t === 'arrow' ? Math.hypot(n.x2 - n.x, n.y2 - n.y) < 0.01 : n.w < 0.005 || n.h < 0.005;
-  if (tiny) design.notes.splice(design.notes.indexOf(n), 1);
+  // a click with the Text tool places a label of the default size; any other tiny drag is a slip
+  if (tiny && n.t === 'text') placeLabel(n, draft.ox, draft.oy);
+  else if (tiny) design.notes.splice(design.notes.indexOf(n), 1);
   draft = null;
   commit();
+  if (n.t === 'text' && design.notes.includes(n)) focusLabelInput();
 }
 canvas.addEventListener('pointerup', endDraft);
 canvas.addEventListener('pointercancel', endDraft);
@@ -395,8 +452,10 @@ canvas.addEventListener('keydown', (e) => {
       n.x = n.y = 0.5;
       n.n = design.notes.filter((m) => m.t === 'step').length + 1;
     }
+    if (t === 'text') placeLabel(n, 0.35, 0.35);
     selected = n;
     commit(() => design.notes.push(n));
+    if (t === 'text') return focusLabelInput(); // Enter or Escape there comes back here
     toast('Added. Arrow keys move it, Alt+arrow keys resize it, Delete removes it.');
     return;
   }
@@ -547,6 +606,7 @@ function wire() {
     if (el.name === 'note-color') noteColor = el.value;
     if (el.name === 'tool') {
       canvas.dataset.tool = el.value;
+      syncLabelInput();
       scheduleDraw(); // the resize handle shows only with the Pointer
     }
   });
@@ -561,6 +621,13 @@ function wire() {
   $('#export-svg').addEventListener('click', exportSvg);
   $('#copy-link').addEventListener('click', copyLink);
   $('#undo').addEventListener('click', undoNote);
+  labelInput.addEventListener('input', editLabel);
+  labelInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === 'Escape') {
+      e.preventDefault();
+      canvas.focus();
+    }
+  });
   $('#shuffle').addEventListener('click', () => commit(() => (design.bg.seed = Math.floor(Math.random() * 1e9))));
   $('#flatten').addEventListener('click', () => commit(() => (design.tiltX = design.tiltY = 0)));
   $('#save-template').addEventListener('submit', (e) => {

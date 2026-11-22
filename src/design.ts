@@ -6,14 +6,14 @@ export const FRAMES = ['none', 'browser', 'mac', 'phone'] as const;
 export const BG_KINDS = ['gradient', 'mesh', 'solid', 'image', 'none'] as const;
 export const SHADOWS = ['none', 'soft', 'medium', 'large'] as const;
 export const SIZES = ['auto', 'github', 'readme', 'x', 'linkedin', 'og', 'square'] as const;
-export const NOTE_KINDS = ['arrow', 'box', 'blur', 'pixel', 'cover', 'step'] as const;
+export const NOTE_KINDS = ['arrow', 'box', 'blur', 'pixel', 'cover', 'step', 'text'] as const;
 export const CAPTION_POS = ['bottom', 'top'] as const;
 export const THEMES = ['framecraft', 'one-dark', 'dracula', 'nord', 'github-dark', 'github-light', 'solarized-light'] as const;
 
 export type Frame = (typeof FRAMES)[number];
 export type NoteKind = (typeof NOTE_KINDS)[number];
 
-/** Annotation in image-relative coordinates (0..1). Arrows use x,y -> x2,y2; rects use x,y,w,h; steps use x,y,n. */
+/** Annotation in image-relative coordinates (0..1). Arrows use x,y -> x2,y2; rects and text labels use x,y,w,h; steps use x,y,n. */
 export interface Note {
   t: NoteKind;
   x: number;
@@ -24,6 +24,8 @@ export interface Note {
   h: number;
   n: number;
   c: string;
+  /** The words on a text label (text notes only). */
+  s?: string;
 }
 
 export interface Design {
@@ -168,11 +170,12 @@ function pick<T extends string>(v: unknown, list: readonly T[], def: T): T {
 
 export const MAX_CODE = 20000;
 export const MAX_NOTES = 200;
+export const MAX_LABEL = 80;
 
 function sanitizeNote(v: unknown): Note | null {
   const o = obj(v);
   if (!NOTE_KINDS.includes(o.t as NoteKind)) return null;
-  return {
+  const note: Note = {
     t: o.t as NoteKind,
     x: num(o.x, 0, 1, 0),
     y: num(o.y, 0, 1, 0),
@@ -183,6 +186,9 @@ function sanitizeNote(v: unknown): Note | null {
     n: int(o.n, 1, 99, 1),
     c: color(o.c, '#ff4d3d'),
   };
+  // labels are one line: control characters (newlines included) become spaces
+  if (note.t === 'text') note.s = str(o.s, MAX_LABEL, '').replace(/[\u0000-\u001f\u007f]/g, ' ');
+  return note;
 }
 
 /** Turn anything (parsed JSON from a URL or storage) into a valid Design. Unknown keys are dropped. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultDesign } from '../src/design';
-import { codeMetrics, layoutCard, layoutScene, shotDisplaySize } from '../src/layout';
+import { codeMetrics, labelFont, labelSize, layoutCard, layoutScene, shotDisplaySize } from '../src/layout';
 import { applyH, homography, invert3, projectCard, type Pt } from '../src/perspective';
 import { contrastInk, gradientLine, meshBlobs } from '../src/presets';
 
@@ -101,6 +101,19 @@ describe('layout', () => {
     const flat = layoutScene(d, { w: 800, h: 800 }).k;
     d.tiltY = 25;
     expect(layoutScene(d, { w: 800, h: 800 }).k).toBeLessThan(flat);
+  });
+});
+
+describe('text labels', () => {
+  it('sizes the pill around the text, and fits text back into any box', () => {
+    const w1 = 4; // text 4 em wide
+    const size = labelSize(w1, 20);
+    expect(size).toEqual({ w: 100, h: 32 }); // half an em each side, 1.6 em tall
+    close(labelFont(w1, size.w, size.h), 20);
+    // a box that is too narrow shrinks the font to fit the width; a short one to fit the height
+    close(labelFont(w1, 50, 32), 10);
+    close(labelFont(w1, 1000, 16), 10);
+    expect(labelFont(0, 0, 0)).toBe(0);
   });
 });
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_CODE, moveNote, sanitize, toTemplate, type Note } from '../src/design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, handleOf, hitNote, MAX_CODE, MAX_LABEL, moveNote, sanitize, toTemplate, type Note } from '../src/design';
 
 describe('sanitize', () => {
   it('returns defaults for junk', () => {
@@ -48,6 +48,19 @@ describe('sanitize', () => {
   it('keeps solid cover redactions from a shared link, with a valid colour', () => {
     const [n] = sanitize({ notes: [{ t: 'cover', x: 0.2, y: 0.3, w: 0.4, h: 0.1, c: 'url(javascript:x)' }] }).notes;
     expect(n).toMatchObject({ t: 'cover', x: 0.2, y: 0.3, w: 0.4, h: 0.1, c: '#ff4d3d' });
+  });
+
+  it('keeps a text label on one line and within the length cap', () => {
+    const [label, box] = sanitize({
+      notes: [
+        { t: 'text', x: 0.1, y: 0.2, w: 0.3, h: 0.05, s: 'Ship\nit\u0000' + 'x'.repeat(200) },
+        { t: 'box', s: 'ignored' },
+      ],
+    }).notes;
+    expect(label.s).toHaveLength(MAX_LABEL);
+    expect(label.s!.startsWith('Ship it ')).toBe(true);
+    expect(box.s).toBeUndefined();
+    expect(sanitize({ notes: [{ t: 'text', s: 42 }] }).notes[0].s).toBe('');
   });
 
   it('does not keep unknown keys', () => {
@@ -195,6 +208,14 @@ describe('hitNote', () => {
     const step = note({ t: 'step', x: 0.5, y: 0.5 }); // radius 18 px at 1000 px wide
     expect(hit([step], 500 + 20, 250)).toBe(0);
     expect(hit([step], 500 + 30, 250)).toBe(-1);
+  });
+
+  it('grabs a text label anywhere inside, and resizes it from its corner', () => {
+    const label = note({ t: 'text', x: 0.1, y: 0.1, w: 0.2, h: 0.1 });
+    expect(hit([label], 200, 75)).toBe(0);
+    const [hx, hy] = handleOf(label)!;
+    expect(hx).toBeCloseTo(0.3);
+    expect(hy).toBeCloseTo(0.2);
   });
 
   it('returns the topmost of overlapping annotations', () => {

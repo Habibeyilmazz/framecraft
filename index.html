@@ -43,7 +43,9 @@
             <label><input type="radio" name="tool" value="pixel" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 4h4v4H4zM12 4h4v4h-4zM8 8h4v4H8zM4 12h4v4H4zM12 12h4v4h-4z"/></svg>Pixelate</span></label>
             <label title="Solid fill: the safest way to hide passwords and keys"><input type="radio" name="tool" value="cover" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="6" width="14" height="8" rx="1.5" class="solid"/></svg>Cover</span></label>
             <label><input type="radio" name="tool" value="step" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7"/><path d="M9 7.5l1.5-1v7"/></svg>Step</span></label>
+            <label title="Click to place a label, or drag to set its size"><input type="radio" name="tool" value="text" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4.5 5.5V4h11v1.5M10 4v12M7.5 16h5"/></svg>Text</span></label>
           </fieldset>
+          <label class="label-field" id="label-field" hidden><span class="visually-hidden">Label text</span><input type="text" id="label-text" maxlength="80" autocomplete="off" spellcheck="false" /></label>
           <fieldset class="swatches small" aria-label="Annotation colour" id="note-colors"></fieldset>
           <button type="button" class="icon-btn" id="undo" aria-label="Undo last annotation" title="Undo last annotation (Ctrl+Z)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M7 5L3 9l4 4M3 9h9a5 5 0 010 10h-2"/></svg></button>
         </div>
@@ -51,7 +53,7 @@
         <div class="canvas-wrap" id="canvas-wrap">
           <canvas id="preview" role="img" tabindex="0" aria-label="Preview of the image you are making" aria-describedby="kbd-help"></canvas>
           <div class="handle" id="handle" hidden></div>
-          <p id="kbd-help" class="visually-hidden">With a screenshot loaded and a tool picked, press Enter to add an annotation. Arrow keys move the selected annotation (the newest, or the one picked in the Annotations list), Shift moves it further, Alt with arrow keys resizes it, Delete removes it. With the Pointer tool, drag the round handle on the selected annotation to resize it.</p>
+          <p id="kbd-help" class="visually-hidden">With a screenshot loaded and a tool picked, press Enter to add an annotation. Arrow keys move the selected annotation (the newest, or the one picked in the Annotations list), Shift moves it further, Alt with arrow keys resizes it, Delete removes it. A new text label moves focus to its text box; type the words, then press Enter to come back. With the Pointer tool, drag the round handle on the selected annotation to resize it.</p>
           <div class="empty" id="empty" hidden>
             <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="10" width="36" height="28" rx="5"/><path d="M6 31l10-9 9 8 6-5 11 9"/><circle cx="32" cy="19" r="3"/></svg>
             <h2>Add a screenshot</h2>
