@@ -701,3 +701,30 @@ test('the preview redraws when a font for new characters arrives', async ({ page
   });
   expect(stale).toBe(false);
 });
+
+test('an image dropped outside the stage loads instead of navigating away', async ({ page }) => {
+  const b64 = (await readFile(SAMPLE)).toString('base64');
+  const prevented = await page.evaluate(async (data) => {
+    const bytes = Uint8Array.from(atob(data), (c) => c.charCodeAt(0));
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], 'shot.png', { type: 'image/png' }));
+    const target = document.querySelector('#inspector')!;
+    // a drop the page does not cancel makes the browser open the file in place of the app
+    return ['dragenter', 'dragover', 'drop'].map((type) => {
+      const e = new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true });
+      target.dispatchEvent(e);
+      return e.defaultPrevented;
+    });
+  }, b64);
+  expect(prevented.slice(1)).toEqual([true, true]);
+  await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
+  // text dragged into a field still lands there
+  const text = await page.evaluate(() => {
+    const dt = new DataTransfer();
+    dt.setData('text/plain', 'hello');
+    const e = new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true });
+    document.querySelector('#inspector')!.dispatchEvent(e);
+    return e.defaultPrevented;
+  });
+  expect(text).toBe(false);
+});

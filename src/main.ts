@@ -702,8 +702,11 @@ function wire() {
   stage.addEventListener('dragleave', () => {
     if (--depth <= 0) hint.hidden = true;
   });
-  stage.addEventListener('dragover', (e) => e.preventDefault());
-  stage.addEventListener('drop', (e) => {
+  // files are taken anywhere on the page: a drop the page ignores makes the browser open the file in place of the app
+  const files = (e: DragEvent) => !!e.dataTransfer?.types.includes('Files'); // text dragged into a field keeps working
+  document.addEventListener('dragover', (e) => files(e) && e.preventDefault());
+  document.addEventListener('drop', (e) => {
+    if (!files(e)) return;
     e.preventDefault();
     depth = 0;
     hint.hidden = true;
