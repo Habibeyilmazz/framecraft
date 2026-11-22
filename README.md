@@ -63,6 +63,8 @@ npm run dev        # then open http://localhost:4210
 - Keyboard: Tab to the preview, pick a tool, press Enter to add an annotation, arrow keys to move it (Shift for bigger
   steps), Alt+arrow keys to resize it or move an arrow's tip, Delete to remove it. The keys act on the selected
   annotation: the newest one, the one you last dragged, or the one you pick by name in the sidebar list.
+- With forced colours (Windows High Contrast) the chosen options use the system highlight colour and the colour
+  swatches keep their colours (checked with Chromium's emulation, not on real Windows).
 
 **Code mode**
 

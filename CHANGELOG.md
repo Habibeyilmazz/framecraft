@@ -5,6 +5,35 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Round 16 ("perf-a11y"): **forced colours (Windows High Contrast)**. Found by emulating `forced-colors: active` in
+  Playwright and looking at the page: every background was repainted as the page's, so the chosen mode, export
+  scale, tool, frame, background kind and shadow looked exactly like the others, and the annotation colour, gradient
+  and mesh swatches were all blank. Chosen segments and tools now use the system Highlight colours, and swatches keep
+  their own colours (`@media (forced-colors: active)` in `src/style.css`). e2e test, seen to fail before the fix.
+  Real Windows High Contrast was not tried; only Chromium's emulation.
+
+- Round 16, measured (built page on `vite preview`, Playwright Chromium, M-series Mac, median of 3; "4x" is DevTools
+  CPU throttling), nothing worth changing:
+  - First load: 5 requests, 127 kB transferred; JS 174 kB (62.4 kB gzip), CSS 23 kB (11.4 kB gzip). 1x: first
+    contentful paint 40 ms, largest 124 ms, total blocking time 19 ms. 4x: 96 ms, 420 ms, 215 ms, almost all of the
+    blocking time being highlight.js compiling its 24 grammars for the first auto-detect (about 90 ms unthrottled in
+    Node). Same as round 8.
+  - Typing in a snippet at the 20 000-character cap (270 lines): about 115 ms per keystroke at 4x, including a frame.
+    A CPU profile splits it between layout, canvas `fillText`, highlight.js and `measureText`, none dominant.
+  - 4000 x 3000 screenshot: a slider change (padding, tilt, grain, radius) redraws within the next frame (17 to
+    23 ms including the frame wait, unthrottled); a 3x PNG export takes 0.6 to 0.9 s, mostly PNG encoding.
+  - Accessibility: axe-core clean in both modes, light and dark (contrast "incomplete" on one node, as before); no
+    horizontal scroll at 320, 390 and 1280 px; tabbing through the page, every stop has a visible ring.
+- Round 16, not done: no crop aspect-ratio lock (a feature, outside this lens). Codex was out of quota again, so the
+  review was by hand. Real Safari, Firefox and Windows High Contrast were not tried by hand.
+
+### Changed
+
+- Round 16: 19 functions and constants that were exported but only used inside their own module are no longer
+  exported (`tsc --noUnusedLocals` is clean; bundle unchanged at 174 kB).
+
 ### Added
 
 - Round 15 ("feature-2"): **added and removed lines in code mode**, to show a change in a launch post or changelog
