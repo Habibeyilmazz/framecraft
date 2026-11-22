@@ -171,6 +171,8 @@ function renderNotesList() {
 
 let frame = 0;
 const PREVIEW_MAX = 4096;
+/** The text whose font files draw() last asked for, per font. */
+const fontAsked = new Map<string, string>();
 function scheduleDraw() {
   cancelAnimationFrame(frame);
   frame = requestAnimationFrame(draw);
@@ -201,6 +203,17 @@ function draw() {
   const s = design.scale;
   $('#readout').textContent = `${scene.W} × ${scene.H} · exports at ${s}x as ${scene.W * s} × ${scene.H * s} px`;
   placeHandle();
+  // canvas text draws a fallback while a font file it needs (e.g. the Cyrillic subset, fetched on first use) loads,
+  // and nothing redraws when it lands (WebKit fires no 'loadingdone' for it), so ask for those files and redraw then
+  const text: [string, string][] = [
+    [`400 16px ${MONO}`, design.mode === 'code' ? design.code.text : ''],
+    [`600 16px ${SANS}`, [design.caption.text, design.url, design.title, design.code.title, ...design.notes.map((n) => n.s ?? '')].join('')],
+  ];
+  for (const [font, chars] of text) {
+    if (!chars || fontAsked.get(font) === chars) continue; // once per text, so a font that never loads cannot loop
+    fontAsked.set(font, chars);
+    if (!document.fonts.check(font, chars)) document.fonts.load(font, chars).then(scheduleDraw, () => {});
+  }
 }
 
 /** Show a resize handle on the selected annotation while the Pointer tool is active. It is a DOM element, so exports never include it. */
@@ -737,8 +750,6 @@ async function start() {
   renderTemplates();
   syncControls();
   draw();
-  // canvas text draws a fallback while a font file (e.g. the Cyrillic subset, fetched on first use) loads: redraw once it lands
-  document.fonts.addEventListener('loadingdone', scheduleDraw);
   // canvas text needs the web fonts actually loaded, not just declared
   await Promise.all([document.fonts.load(`400 16px ${MONO}`), document.fonts.load(`600 16px ${SANS}`)]).catch(() => {});
   hlCache = null;
