@@ -1323,3 +1323,19 @@ test('axe finds no WCAG 2.2 AA problems, light on a desktop and dark on a phone,
     }
   }
 });
+
+test('forced colours (Windows High Contrast) still show which option is chosen and keep the swatch colours', async ({ page }) => {
+  await page.emulateMedia({ forcedColors: 'active' });
+  await page.goto('/');
+  await loadShot(page);
+  const bg = (sel: string) => page.locator(sel).first().evaluate((el) => getComputedStyle(el).backgroundColor);
+  const pageBg = await bg('body');
+  // forced colours repaint every background as the page's, so a chosen segment or tool looked like the others
+  expect(await bg('input[name=mode]:checked + span')).not.toBe(pageBg);
+  expect(await bg('input[name=tool]:checked + span')).not.toBe(pageBg);
+  // a colour swatch is its colour: two different ones must not both turn into the page background
+  const swatches = page.locator('.swatches.small label');
+  expect(await swatches.nth(0).evaluate((el) => getComputedStyle(el).backgroundColor)).not.toBe(
+    await swatches.nth(1).evaluate((el) => getComputedStyle(el).backgroundColor),
+  );
+});

@@ -825,6 +825,20 @@ input[type='color'] {
   }
 }
 
+/* Windows High Contrast and other forced colours paint every background as the page's */
+@media (forced-colors: active) {
+  .seg input:checked + span,
+  .tools input:checked + span {
+    forced-color-adjust: none; /* else the text gets a page-coloured backplate, and HighlightText on it is unreadable */
+    background: Highlight;
+    color: HighlightText;
+  }
+  /* a swatch is its colour */
+  .swatches label {
+    forced-color-adjust: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition: none !important;
