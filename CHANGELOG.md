@@ -32,8 +32,12 @@ All notable changes to this project are documented here. The format follows
     keyboard resizes and Delete resets, undo steps back, the crop survives a link, and replacing the image clears it.
 - Round 12, known limits: with the Pointer an annotation can still be dragged past the crop's edge, where it is
   hidden (it stays in the Annotations list and the keyboard can move it back). There is no aspect-ratio lock for the
-  crop. A label placed right at the crop's edge can be partly cut off. `docs/` images were not regenerated; none
-  shows the Crop tool yet.
+  crop. A label placed right at the crop's edge can be partly cut off. With the Crop tool on the phone frame, the
+  preview's dimming also darkens the bezel's rounded corners a little (preview only). Codex was out of quota again
+  (second opinion by hand: annotations hidden outside the crop are no longer grabbed by the Pointer and show no
+  resize handle). Firefox and WebKit ran only in CI.
+- Round 12: `docs/screenshots/screenshot-mode.png` and `phone.png` regenerated with `scripts/readme-images.mjs` so
+  the toolbar shows Crop; no README image shows a cropped screenshot.
 
 ### Security
 
