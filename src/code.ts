@@ -153,10 +153,11 @@ export const DETECT_SAMPLE = 4000;
 /** Highlight code; lang 'auto' lets highlight.js guess from the registered languages. */
 export function highlight(code: string, lang: string): Highlighted {
   const text = code.replace(/\r\n?/g, '\n').replace(/\t/g, '  ').replace(/\s+$/, '');
-  if (Object.hasOwn(LANGUAGES, lang)) return { lang, lines: htmlToLines(hljs.highlight(text, { language: lang, ignoreIllegals: true }).value) };
+  const colour = (language: string) => htmlToLines(hljs.highlight(text, { language, ignoreIllegals: true }).value);
+  if (Object.hasOwn(LANGUAGES, lang)) return { lang, lines: colour(lang) };
   const res = hljs.highlightAuto(text.slice(0, DETECT_SAMPLE));
   if (text.length <= DETECT_SAMPLE) return { lang: res.language ?? 'plaintext', lines: htmlToLines(res.value) };
-  if (res.language) return highlight(text, res.language);
+  if (res.language) return { lang: res.language, lines: colour(res.language) };
   return { lang: 'plaintext', lines: text.split('\n').map((line) => (line ? [{ text: line, role: 'fg' }] : [])) };
 }
 
