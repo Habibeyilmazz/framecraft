@@ -296,7 +296,7 @@ test('an SVG file works as a screenshot, with or without a width and height', as
   expect(await page.title()).not.toBe('ran');
 });
 
-test('an SVG with HTML inside (foreignObject) either exports or is refused with a reason', async ({ page }) => {
+test('an SVG with HTML inside (foreignObject) either exports or is refused with a reason', async ({ page, browserName }) => {
   const svg = Buffer.from(
     '<svg xmlns="http://www.w3.org/2000/svg" width="640" height="360"><rect width="640" height="360" fill="#2050e0"/>' +
       '<foreignObject width="640" height="360"><div xmlns="http://www.w3.org/1999/xhtml" style="font:40px sans-serif">Hello</div></foreignObject></svg>',
@@ -305,6 +305,7 @@ test('an SVG with HTML inside (foreignObject) either exports or is refused with 
   await page.setInputFiles('#file', { name: 'html.svg', mimeType: 'image/svg+xml', buffer: svg });
   const toolbar = page.getByRole('toolbar', { name: 'Annotation tools' });
   await expect(toolbar.or(page.locator('#toast'))).toBeVisible();
+  expect(await toolbar.isVisible()).toBe(browserName !== 'webkit'); // seen in CI: only WebKit taints the canvas
   if (await toolbar.isVisible()) {
     // loaded, so it must not taint the canvas: a PNG exports
     const dl = page.waitForEvent('download');
