@@ -7,6 +7,18 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 
+- Round 7 ("feature-2"): **recolour a placed annotation**. With the Pointer tool active, the colour swatches show the
+  selected annotation's colour, and picking one (by mouse, or arrow keys inside the swatch group) recolours it, with
+  a toast such as "Step 2 recoloured." and one undo step per change. With a drawing tool the swatches still set the
+  colour of the next annotation, so picking a colour before drawing never repaints the last one. e2e test (checked to
+  fail without the change).
+- Round 7: **custom output size**. "Custom size" in the Size list shows Width and Height (px) fields, 64 to 4096 px a
+  side (3x of the largest stays under the 16384 px export limit). A number reaches the design only when it is whole
+  and in range, so typing "1000" never renders a 1 px card on the way; leaving the field puts back the size in use.
+  The size goes into share links, templates and the file name (`framecraft-code-1000x420@2x.png`). New `width` and
+  `height` design fields, clamped by `sanitize` (unit-tested), and used by `layoutScene` only for `size: 'custom'`
+  (unit-tested); one e2e test covers typing, rejecting, the downloaded PNG's size and the share link.
+
 - Round 6 ("launch"): a 16-second demo GIF near the top of the README (`docs/demo.gif`, 960 px, about 4 MB),
   recorded from the real app by `scripts/demo-gif.mjs` (Playwright video with a drawn pointer, encoded by ffmpeg).
 - README sections "When to use something else" (Carbon, ray.so, freeze, silicon, Shots, CleanShot X, Xnapper, and
@@ -116,6 +128,14 @@ All notable changes to this project are documented here. The format follows
 
 ### Notes for the next person
 
+- Round 7 ("feature-2"): picked the two roadmap items a newcomer hits first: a misplaced colour could only be fixed by
+  deleting and redrawing, and sizes such as a DEV cover (1000 x 420) or a YouTube thumbnail had no preset. Not built:
+  keyboard shortcuts for tools (Tab to the toolbar works), a swap-width-and-height button, remembering the custom size
+  when the Size list switches away and back (it is kept in the design, so it does come back). Reported gaps
+  re-checked: Codex was out of quota again (usage limit until 09:32), so the review was done by hand. axe-core 4.10.3
+  (WCAG 2.2 AA plus best practices) was run against the dev page at 1440 px light and 390 px dark, code and screenshot
+  mode, with the custom size fields showing and a step selected: 0 violations (contrast "incomplete" as before). axe
+  is still not in CI. The owner-only settings (private vulnerability reporting, social preview upload) are unchanged.
 - Round 6 ("launch"): re-checked the reported gaps. The 99-step refusal had no test (added). axe-core 4.10 (WCAG 2.2
   AA plus best practices) was run against the built page at 1440 and 390 px, light and dark, in code mode and in
   screenshot mode with a label being edited: 0 violations. axe could not decide contrast for `#readout` and the
