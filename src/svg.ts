@@ -4,6 +4,7 @@ import { CODE_THEMES, parseLineRanges, type Highlighted } from './code';
 import type { Design } from './design';
 import { layoutCard, layoutScene, type CodeMetrics } from './layout';
 import { GRADIENTS, gradientLine, MESHES, meshBlobs, SHADOW_PRESETS } from './presets';
+import { codeLayout } from './render';
 
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 const n = (v: number) => String(Math.round(v * 100) / 100);
@@ -124,7 +125,6 @@ async function dataUrl(url: string): Promise<string> {
 
 /** Browser wrapper: measures with the real font and embeds fonts and the background image so the file stands alone. */
 export async function codeToSvg(d: Design, hl: Highlighted, bgImage?: CanvasImageSource & { width: number; height: number }): Promise<string> {
-  const { codeLayout } = await import('./render');
   let bg: string | undefined;
   if (d.bg.kind === 'image' && bgImage) {
     const c = document.createElement('canvas');
