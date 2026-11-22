@@ -5,7 +5,39 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Fixed
+### Security
+
+- Round 11 ("security"). Probed the trust boundaries by running crafted inputs against the built app (Playwright
+  Chromium) instead of reading only. Fixed the two that hurt, each with a test checked to fail without the fix:
+  - **A share link could freeze the tab for about 27 s.** 184 characters holding 200 whole-image blurs; adding a
+    4096 x 3072 screenshot then took 27 s on the main thread. Two changes:
+    - Blur runs on the small downscaled copy (1 px there is one cell at full size) instead of the full-size region.
+      The blur is drawn only from that small copy, as before, so it hides no less. It looks the same side by side.
+      Each blur costs about a quarter of what it did (200 blurs: 27 s to 6.8 s).
+    - At most 30 blur, pixelate and cover areas (`MAX_REDACTIONS` in `src/design.ts`): `sanitize` keeps the first
+      30 from a link. The editor refuses the 31st with a message, and also refuses past 200 annotations; before,
+      it silently allowed more than 200, which a reload then dropped. `noteLimit()` is the one check for both,
+      so what the editor allows always survives a reload. A dropped redaction would show what it covered.
+      Unit tests, plus two e2e tests: the crafted link renders 30 blurs within 10 s (about 1 s here), and a
+      keyboard blur cuts neighbour-to-neighbour roughness on random pixels by more than 10x.
+    - Still slow in one place: CI's WebKit (Linux, software canvas) took 19 s for those 30 whole-image blurs on
+      12 MP, so the 10 s check runs in Chromium only. Real Safari on a Mac is not measured. If it is slow too, the
+      next step is a lower `MAX_REDACTIONS` or a cap on total redacted area.
+  - **One very long line hung highlighting for about 2.4 s.** highlight.js slows with the square of a line's length
+    (one 20 000-character line in Java or INI: 1.6 to 2.4 s; the same text in 80-character lines: under 35 ms).
+    Text with a line over 1000 characters (`MAX_HIGHLIGHT_LINE`) now stays plain. Unit test.
+- Round 11, checked and fine, no change: `npm audit` 0 vulnerabilities (all and production-only); git history has
+  one author (the noreply address), no keys, tokens or local paths; every tracked PNG has only IHDR/IDAT/IEND
+  chunks; both workflows have `contents: read`, `persist-credentials: false`, and actions pinned to SHAs that
+  match their tags (re-checked with `gh api`). The Pages workflow is `workflow_dispatch` only; its deploy job
+  alone gets `pages: write`/`id-token: write`. Other crafted links (200 text labels, arrows, boxes or steps, or
+  a full tilt with a 200-character 96 px caption) draw in about 60 to 140 ms and export at 3x in about 1 to
+  1.6 s. Image decode bombs: a 1.5 MB PNG of 40000 x 40000 px and a 0.7 MB one of 16000 x 16000 px are refused
+  in under 0.2 s. Chromium decodes lazily, so the size check runs before any big allocation. The first gets
+  "could not be read" rather than the size message.
+- Round 11, not done: the `/security-review` skill refused to run because the session's working directory is not a
+  git repository (same as round 3). Codex was out of quota, so there was no second opinion. Firefox and WebKit
+  ran only in CI.
 
 - Round 10 ("design"): looked at the running app at 1440 px and 390 px, light and dark, in both modes, with the empty,
   annotating, label-editing, template and error-toast states, and walked the keyboard focus order (logical, every stop
