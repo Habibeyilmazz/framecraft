@@ -378,6 +378,9 @@ legend {
 #preview[data-tool]:not([data-tool='']) {
   cursor: crosshair;
 }
+#preview[data-grab] {
+  cursor: move;
+}
 #preview[hidden] {
   display: none;
 }
@@ -633,6 +636,18 @@ input[type='color'] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.notes-list .note-name {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.notes-list li:has([aria-pressed='true']) {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
 }
 .notes-list .dot {
   flex: none;

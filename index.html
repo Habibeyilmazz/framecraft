@@ -36,7 +36,7 @@
       <section class="stage" id="stage" aria-label="Preview">
         <div class="toolbar" id="tools" role="toolbar" aria-label="Annotation tools" data-show="mode:shot" hidden>
           <fieldset class="tools" aria-label="Tool">
-            <label><input type="radio" name="tool" value="" checked /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3l10 6-4.5 1.2L8.6 15z"/></svg>Pointer</span></label>
+            <label title="Drag an annotation to move it"><input type="radio" name="tool" value="" checked /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 3l10 6-4.5 1.2L8.6 15z"/></svg>Pointer</span></label>
             <label><input type="radio" name="tool" value="arrow" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 16L15 5M8 5h7v7"/></svg>Arrow</span></label>
             <label><input type="radio" name="tool" value="box" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3.5" y="5" width="13" height="10" rx="2"/></svg>Box</span></label>
             <label><input type="radio" name="tool" value="blur" /><span><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="6" stroke-dasharray="2 2.4"/><circle cx="10" cy="10" r="2.5"/></svg>Blur</span></label>
@@ -49,7 +49,7 @@
 
         <div class="canvas-wrap" id="canvas-wrap">
           <canvas id="preview" role="img" tabindex="0" aria-label="Preview of the image you are making" aria-describedby="kbd-help"></canvas>
-          <p id="kbd-help" class="visually-hidden">With a screenshot loaded and a tool picked, press Enter to add an annotation. Arrow keys move the last annotation, Shift moves it further, Alt with arrow keys resizes it, Delete removes it.</p>
+          <p id="kbd-help" class="visually-hidden">With a screenshot loaded and a tool picked, press Enter to add an annotation. Arrow keys move the selected annotation (the newest, or the one picked in the Annotations list), Shift moves it further, Alt with arrow keys resizes it, Delete removes it.</p>
           <div class="empty" id="empty" hidden>
             <svg viewBox="0 0 48 48" aria-hidden="true"><rect x="6" y="10" width="36" height="28" rx="5"/><path d="M6 31l10-9 9 8 6-5 11 9"/><circle cx="32" cy="19" r="3"/></svg>
             <h2>Drop a screenshot here</h2>

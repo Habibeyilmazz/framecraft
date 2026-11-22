@@ -2,7 +2,7 @@ import '@fontsource/jetbrains-mono/400.css';
 import '@fontsource-variable/instrument-sans';
 import './style.css';
 import { CODE_THEMES, highlight, LANGUAGES, type Highlighted } from './code';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, moveNote, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, hitNote, moveNote, sanitize, toTemplate, type Design, type Note, type NoteKind } from './design';
 import { layoutCard, layoutScene } from './layout';
 import { GRADIENTS, MESHES, NOTE_COLORS, SIZE_PRESETS } from './presets';
 import { checkExportSize, contentSize, MONO, render, SANS, toBlob, type Assets, type Img, type Rendered } from './render';
@@ -16,6 +16,9 @@ let shot: Img | undefined;
 let bgImage: Img | undefined;
 let rendered: Rendered | null = null;
 let noteColor = NOTE_COLORS[0];
+/** The annotation the keyboard edits: the one last clicked or dragged, else the newest. */
+let selected: Note | undefined;
+const current = (): Note | undefined => (selected && design.notes.includes(selected) ? selected : design.notes.at(-1));
 
 const canvas = $<HTMLCanvasElement>('#preview');
 const wrap = $('#canvas-wrap');
@@ -131,12 +134,20 @@ function renderNotesList() {
   const ul = document.createElement('ul');
   design.notes.forEach((n, i) => {
     const li = document.createElement('li');
-    li.innerHTML = `<i class="dot"></i><span></span><button type="button" class="link-btn">Remove</button>`;
+    li.innerHTML = `<i class="dot"></i><button type="button" class="link-btn note-name"></button><button type="button" class="link-btn">Remove</button>`;
     li.querySelector<HTMLElement>('.dot')!.style.background = n.c;
     const label = n.t === 'step' ? `Step ${n.n}` : `${names[n.t]} ${design.notes.slice(0, i + 1).filter((m) => m.t === n.t).length}`;
-    li.querySelector('span')!.textContent = label;
-    li.querySelector('button')!.setAttribute('aria-label', `Remove ${label}`);
-    li.querySelector('button')!.onclick = () => commit(() => design.notes.splice(i, 1));
+    const [pick, remove] = li.querySelectorAll('button');
+    pick.textContent = label;
+    pick.title = 'Select, then use the arrow keys on the preview';
+    pick.setAttribute('aria-pressed', String(n === current()));
+    pick.onclick = () => {
+      selected = n;
+      renderNotesList();
+      canvas.focus();
+    };
+    remove.setAttribute('aria-label', `Remove ${label}`);
+    remove.onclick = () => commit(() => design.notes.splice(i, 1));
     ul.append(li);
   });
   host.append(head, ul);
@@ -249,6 +260,15 @@ fileInput.addEventListener('change', async () => {
 
 const tool = () => document.querySelector<HTMLInputElement>('input[name="tool"]:checked')?.value ?? '';
 let draft: { note: Note; ox: number; oy: number } | null = null;
+let drag: { note: Note; orig: Note; sx: number; sy: number } | null = null;
+
+/** The annotation under the pointer, grabbed within about 6 screen px. */
+function noteAt(p: [number, number]): Note | undefined {
+  if (!rendered) return;
+  const { scene, card } = rendered;
+  const tol = (6 * scene.W) / canvas.getBoundingClientRect().width / scene.k;
+  return design.notes[hitNote(design.notes, p[0], p[1], card.content.w, card.content.h, tol)];
+}
 
 function pointerToContent(e: PointerEvent): [number, number] | null {
   if (!rendered) return null;
@@ -261,9 +281,19 @@ const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 canvas.addEventListener('pointerdown', (e) => {
   const t = tool() as NoteKind | '';
-  if (!t || design.mode !== 'shot' || !shot) return;
+  if (design.mode !== 'shot' || !shot) return;
   const p = pointerToContent(e);
-  if (!p || p[0] < 0 || p[0] > 1 || p[1] < 0 || p[1] > 1) return;
+  if (!p) return;
+  if (!t) {
+    const note = noteAt(p);
+    if (!note) return;
+    selected = note;
+    drag = { note, orig: { ...note }, sx: p[0], sy: p[1] };
+    canvas.setPointerCapture(e.pointerId);
+    e.preventDefault();
+    return renderNotesList();
+  }
+  if (p[0] < 0 || p[0] > 1 || p[1] < 0 || p[1] > 1) return;
   const [x, y] = p;
   const base: Note = { t, x, y, x2: x, y2: y, w: 0, h: 0, n: 1, c: noteColor };
   if (t === 'step') {
@@ -273,14 +303,21 @@ canvas.addEventListener('pointerdown', (e) => {
   }
   draft = { note: base, ox: x, oy: y };
   design.notes.push(base);
+  selected = base;
   canvas.setPointerCapture(e.pointerId);
   e.preventDefault();
 });
 
 canvas.addEventListener('pointermove', (e) => {
-  if (!draft) return;
   const p = pointerToContent(e);
   if (!p) return;
+  if (drag) {
+    Object.assign(drag.note, drag.orig);
+    moveNote(drag.note, p[0] - drag.sx, p[1] - drag.sy, false);
+    return scheduleDraw();
+  }
+  canvas.toggleAttribute('data-grab', !draft && !tool() && design.mode === 'shot' && !!noteAt(p));
+  if (!draft) return;
   const [x, y] = [clamp01(p[0]), clamp01(p[1])];
   const n = draft.note;
   if (n.t === 'arrow') {
@@ -296,6 +333,10 @@ canvas.addEventListener('pointermove', (e) => {
 });
 
 function endDraft() {
+  if (drag) {
+    drag = null;
+    commit();
+  }
   if (!draft) return;
   const n = draft.note;
   const tiny = n.t === 'arrow' ? Math.hypot(n.x2 - n.x, n.y2 - n.y) < 0.01 : n.w < 0.005 || n.h < 0.005;
@@ -306,7 +347,7 @@ function endDraft() {
 canvas.addEventListener('pointerup', endDraft);
 canvas.addEventListener('pointercancel', endDraft);
 
-// Keyboard alternative to drawing: Enter adds, arrows move, Alt+arrows resize, Delete removes the last annotation.
+// Keyboard alternative to drawing: Enter adds, arrows move, Alt+arrows resize, Delete removes the selected annotation.
 canvas.addEventListener('keydown', (e) => {
   if (design.mode !== 'shot' || !shot) return;
   const t = tool() as NoteKind | '';
@@ -318,21 +359,23 @@ canvas.addEventListener('keydown', (e) => {
       n.x = n.y = 0.5;
       n.n = design.notes.filter((m) => m.t === 'step').length + 1;
     }
+    selected = n;
     commit(() => design.notes.push(n));
     toast('Added. Arrow keys move it, Alt+arrow keys resize it, Delete removes it.');
     return;
   }
+  const note = current();
+  if (!note) return;
   if (e.key === 'Delete' || e.key === 'Backspace') {
     e.preventDefault();
-    return undoNote();
+    return commit(() => design.notes.splice(design.notes.indexOf(note), 1));
   }
   const dir: Record<string, [number, number]> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
-  const last = design.notes[design.notes.length - 1];
-  if (!dir[e.key] || !last) return;
+  if (!dir[e.key]) return;
   e.preventDefault();
   const step = e.shiftKey ? 0.05 : 0.01;
   const [dx, dy] = dir[e.key].map((v) => v * step);
-  commit(() => moveNote(last, dx, dy, e.altKey));
+  commit(() => moveNote(note, dx, dy, e.altKey));
 });
 
 function undoNote() {
@@ -502,7 +545,11 @@ function wire() {
   });
 
   document.addEventListener('paste', (e) => {
-    const file = [...(e.clipboardData?.files ?? [])].find((f) => f.type.startsWith('image/'));
+    const data = e.clipboardData;
+    // some browsers list a pasted image only under items, others only under files
+    const file =
+      [...(data?.files ?? [])].find((f) => f.type.startsWith('image/')) ??
+      [...(data?.items ?? [])].find((i) => i.kind === 'file' && i.type.startsWith('image/'))?.getAsFile();
     if (!file) return;
     e.preventDefault();
     useShot(file);

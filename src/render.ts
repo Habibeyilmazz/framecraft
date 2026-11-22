@@ -1,5 +1,5 @@
 import { CODE_THEMES, parseLineRanges, type Highlighted } from './code';
-import type { Design, Note } from './design';
+import { stepRadius, type Design, type Note } from './design';
 import { codeMetrics, layoutCard, layoutScene, shotDisplaySize, type Box, type CardLayout, type CodeMetrics, type Scene } from './layout';
 import { applyH, homography, invert3, projectCard, type Mat3, type ProjPt } from './perspective';
 import { contrastInk, GRADIENTS, gradientLine, MESHES, meshBlobs, SHADOW_PRESETS } from './presets';
@@ -239,7 +239,7 @@ function drawNotes(ctx: Ctx, notes: Note[], c: Box) {
       ctx.fill();
       ctx.stroke();
     } else if (n.t === 'step') {
-      const r = Math.max(10, c.w * 0.018);
+      const r = stepRadius(c.w);
       const x = c.x + n.x * c.w, y = c.y + n.y * c.h;
       ctx.beginPath();
       ctx.arc(x, y, r, 0, Math.PI * 2);

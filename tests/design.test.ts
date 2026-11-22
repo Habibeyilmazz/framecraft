@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, MAX_CODE, moveNote, sanitize, toTemplate, type Note } from '../src/design';
+import { applyTemplate, decodeDesign, defaultDesign, encodeDesign, hitNote, MAX_CODE, moveNote, sanitize, toTemplate, type Note } from '../src/design';
 
 describe('sanitize', () => {
   it('returns defaults for junk', () => {
@@ -147,5 +147,44 @@ describe('moveNote', () => {
     const s = note('step');
     moveNote(s, -1, 0.05, false);
     expect([s.x, s.y]).toEqual([0, 0.45]);
+  });
+});
+
+describe('hitNote', () => {
+  const note = (o: Partial<Note>): Note => ({ t: 'box', x: 0, y: 0, x2: 0, y2: 0, w: 0, h: 0, n: 1, c: '#ff4d3d', ...o });
+  // content 1000 x 500 px, grab distance 6 px
+  const hit = (notes: Note[], x: number, y: number) => hitNote(notes, x / 1000, y / 500, 1000, 500, 6);
+
+  it('grabs a box by its outline but not its middle', () => {
+    const box = note({ x: 0.1, y: 0.1, w: 0.4, h: 0.4 }); // 100..500 x 50..250 px
+    expect(hit([box], 104, 150)).toBe(0);
+    expect(hit([box], 300, 245)).toBe(0);
+    expect(hit([box], 300, 150)).toBe(-1);
+    expect(hit([box], 300, 270)).toBe(-1);
+  });
+
+  it('grabs redactions anywhere inside', () => {
+    expect(hit([note({ t: 'pixel', x: 0.1, y: 0.1, w: 0.4, h: 0.4 })], 300, 150)).toBe(0);
+  });
+
+  it('measures arrows in real pixels, whatever the aspect ratio', () => {
+    const arrow = note({ t: 'arrow', x: 0.1, y: 0.5, x2: 0.9, y2: 0.5 }); // 100..900 px along y = 250
+    expect(hit([arrow], 500, 255)).toBe(0);
+    expect(hit([arrow], 500, 260)).toBe(-1);
+    expect(hit([arrow], 905, 250)).toBe(0);
+    expect(hit([arrow], 920, 250)).toBe(-1);
+  });
+
+  it('grabs a step badge within its radius', () => {
+    const step = note({ t: 'step', x: 0.5, y: 0.5 }); // radius 18 px at 1000 px wide
+    expect(hit([step], 500 + 20, 250)).toBe(0);
+    expect(hit([step], 500 + 30, 250)).toBe(-1);
+  });
+
+  it('returns the topmost of overlapping annotations', () => {
+    const a = note({ t: 'blur', x: 0, y: 0, w: 1, h: 1 });
+    const b = note({ t: 'pixel', x: 0, y: 0, w: 1, h: 1 });
+    expect(hit([a, b], 500, 250)).toBe(1);
+    expect(hit([], 500, 250)).toBe(-1);
   });
 });

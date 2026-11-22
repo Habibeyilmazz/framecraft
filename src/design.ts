@@ -117,6 +117,36 @@ export function moveNote(n: Note, dx: number, dy: number, resize: boolean) {
   }
 }
 
+/** Radius of a step badge on content that is w px wide. */
+export const stepRadius = (w: number) => Math.max(10, w * 0.018);
+
+/**
+ * Index of the topmost annotation at (x, y) in 0..1 content coordinates, or -1. w and h are the content size in px
+ * and tol is the grab distance in the same px, so hits are measured in real distance whatever the aspect ratio.
+ */
+export function hitNote(notes: Note[], x: number, y: number, w: number, h: number, tol: number): number {
+  const px = x * w;
+  const py = y * h;
+  for (let i = notes.length - 1; i >= 0; i--) {
+    const n = notes[i];
+    if (n.t === 'arrow') {
+      const [ax, ay, bx, by] = [n.x * w, n.y * h, n.x2 * w, n.y2 * h];
+      const len2 = (bx - ax) ** 2 + (by - ay) ** 2;
+      const t = len2 ? Math.min(1, Math.max(0, ((px - ax) * (bx - ax) + (py - ay) * (by - ay)) / len2)) : 0;
+      if (Math.hypot(px - ax - t * (bx - ax), py - ay - t * (by - ay)) <= tol) return i;
+    } else if (n.t === 'step') {
+      if (Math.hypot(px - n.x * w, py - n.y * h) <= stepRadius(w) + tol) return i;
+    } else {
+      const [l, t, r, b] = [n.x * w, n.y * h, (n.x + n.w) * w, (n.y + n.h) * h];
+      const near = px >= l - tol && px <= r + tol && py >= t - tol && py <= b + tol;
+      // a box is only an outline, so you grab its edge; redactions are solid
+      const onEdge = n.t !== 'box' || px <= l + tol || px >= r - tol || py <= t + tol || py >= b - tol;
+      if (near && onEdge) return i;
+    }
+  }
+  return -1;
+}
+
 // ---- validation (the URL hash and localStorage are untrusted input) ----
 
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {});
