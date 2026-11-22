@@ -19,7 +19,7 @@ type Ctx = CanvasRenderingContext2D;
 
 let scratch: CanvasRenderingContext2D | undefined;
 
-export function measureCode(fontSize: number): (s: string) => number {
+function measureCode(fontSize: number): (s: string) => number {
   scratch ??= document.createElement('canvas').getContext('2d')!;
   scratch.font = `400 ${fontSize}px ${MONO}`;
   const ctx = scratch;
@@ -64,12 +64,12 @@ export interface Rendered {
   whole: { w: number; h: number };
 }
 
-export function roundRect(ctx: Ctx | Path2D, x: number, y: number, w: number, h: number, r: number) {
+function roundRect(ctx: Ctx | Path2D, x: number, y: number, w: number, h: number, r: number) {
   r = Math.max(0, Math.min(r, w / 2, h / 2));
   ctx.roundRect(x, y, w, h, r);
 }
 
-export function hexA(hex: string, a: number): string {
+function hexA(hex: string, a: number): string {
   const n = parseInt(hex.slice(1), 16);
   return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${a})`;
 }
@@ -94,7 +94,7 @@ function noise(): HTMLCanvasElement {
   return noiseTile;
 }
 
-export function drawBackground(ctx: Ctx, d: Design, W: number, H: number, bgImage?: Img) {
+function drawBackground(ctx: Ctx, d: Design, W: number, H: number, bgImage?: Img) {
   const bg = d.bg;
   if (bg.kind === 'none') return;
   if (bg.kind === 'solid' || (bg.kind === 'image' && !bgImage)) {
@@ -183,7 +183,7 @@ let redactCache: { img: Img; key: string; out: HTMLCanvasElement } | null = null
  * overlapping one can never bring back pixels an earlier one covered. Cells are at least 8 image px, so even
  * a tiny image loses its detail.
  */
-export function redact(img: Img, notes: Note[]): Img {
+function redact(img: Img, notes: Note[]): Img {
   const marks = notes.filter((n) => n.t === 'blur' || n.t === 'pixel' || n.t === 'cover');
   if (!marks.length) return img;
   const key = JSON.stringify(marks);
@@ -550,7 +550,7 @@ export function render(d: Design, a: Assets, scale: number, target?: HTMLCanvasE
 // Safari's canvas area cap is the smallest of the major browsers (about 16.7 megapixels on iOS, 268 on desktop Chrome);
 // shortcut: one conservative limit for all, raise it if people hit it on desktop.
 export const MAX_SIDE = 16384;
-export const MAX_AREA = 120_000_000;
+const MAX_AREA = 120_000_000;
 
 /** Throws with a readable message when an export would be larger than browsers can draw. */
 export function checkExportSize(d: Design, a: Assets, scale: number) {

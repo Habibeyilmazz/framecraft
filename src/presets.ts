@@ -59,7 +59,7 @@ export const SHADOW_PRESETS: Record<string, { blur: number; y: number; alpha: nu
 export const NOTE_COLORS = ['#ff4d3d', '#ffb020', '#22c55e', '#3b82f6', '#111111', '#ffffff'];
 
 /** Small deterministic PRNG so a mesh looks the same for everyone who opens the link. */
-export function mulberry32(seed: number): () => number {
+function mulberry32(seed: number): () => number {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;

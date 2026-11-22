@@ -1,14 +1,14 @@
 // The whole design as plain JSON. Everything here goes into the share URL, so
 // images never live in it; they are held in memory by main.ts.
 
-export const MODES = ['code', 'shot'] as const;
-export const FRAMES = ['none', 'browser', 'mac', 'phone'] as const;
-export const BG_KINDS = ['gradient', 'mesh', 'solid', 'image', 'none'] as const;
-export const SHADOWS = ['none', 'soft', 'medium', 'large'] as const;
-export const SIZES = ['auto', 'github', 'readme', 'x', 'linkedin', 'og', 'square', 'custom'] as const;
-export const NOTE_KINDS = ['arrow', 'box', 'blur', 'pixel', 'cover', 'step', 'text'] as const;
-export const CAPTION_POS = ['bottom', 'top'] as const;
-export const THEMES = ['framecraft', 'one-dark', 'dracula', 'nord', 'github-dark', 'github-light', 'solarized-light'] as const;
+const MODES = ['code', 'shot'] as const;
+const FRAMES = ['none', 'browser', 'mac', 'phone'] as const;
+const BG_KINDS = ['gradient', 'mesh', 'solid', 'image', 'none'] as const;
+const SHADOWS = ['none', 'soft', 'medium', 'large'] as const;
+const SIZES = ['auto', 'github', 'readme', 'x', 'linkedin', 'og', 'square', 'custom'] as const;
+const NOTE_KINDS = ['arrow', 'box', 'blur', 'pixel', 'cover', 'step', 'text'] as const;
+const CAPTION_POS = ['bottom', 'top'] as const;
+const THEMES = ['framecraft', 'one-dark', 'dracula', 'nord', 'github-dark', 'github-light', 'solarized-light'] as const;
 
 export type Frame = (typeof FRAMES)[number];
 export type NoteKind = (typeof NOTE_KINDS)[number];
@@ -77,7 +77,7 @@ export const FULL_CROP: Crop = { x: 0, y: 0, w: 1, h: 1 };
 export const MIN_CROP = 0.02;
 
 // it must auto-detect as TypeScript, the language its file name (export.ts) promises (tests/code.test.ts)
-export const SAMPLE_CODE = `// Pick a frame, drop a screenshot, ship the launch post.
+const SAMPLE_CODE = `// Pick a frame, drop a screenshot, ship the launch post.
 type Scale = 1 | 2 | 3;
 
 export async function exportImage(design: Design, scale: Scale = 2) {
@@ -153,7 +153,7 @@ export function handleOf(n: Note): [number, number] | null {
 }
 
 /** The highest step number a share link keeps. */
-export const MAX_STEP = 99;
+const MAX_STEP = 99;
 
 /** Number for a new step badge: one past the highest, so deleting a step never leads to a repeat. Callers refuse it past MAX_STEP. */
 export const nextStep = (notes: Note[]) => Math.max(0, ...notes.filter((n) => n.t === 'step').map((n) => n.n)) + 1;
@@ -222,7 +222,7 @@ function pick<T extends string>(v: unknown, list: readonly T[], def: T): T {
 export const MAX_CODE = 20000;
 export const MAX_LABEL = 80;
 /** Limits of a custom output size, in px at 1x (3x of the largest stays under the 16384 px export limit). */
-export const MIN_SIDE = 64;
+const MIN_SIDE = 64;
 export const MAX_SIDE = 4096;
 
 function sanitizeNote(v: unknown): Note | null {

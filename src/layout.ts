@@ -107,7 +107,7 @@ export function layoutCard(d: Design, content: { w: number; h: number }): CardLa
   }
 }
 
-export function captionBand(d: Design): number {
+function captionBand(d: Design): number {
   return d.caption.text.trim() ? Math.round(d.caption.size * 2.1) : 0;
 }
 
