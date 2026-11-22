@@ -5,7 +5,34 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- Round 8 ("perf-a11y"). Measured first (built page on `vite preview`, Playwright Chromium, M-series Mac; "4x" means
+  DevTools CPU throttling at 4x), then fixed the two slow paths found:
+  - **Long snippets in Auto-detect.** highlight.js detection highlights the text once per language (24), so each
+    keystroke in a 2000-line (~120 000 character) paste cost about 1.35 s of main thread at 4x. The language is now
+    guessed from the first 4000 characters (`DETECT_SAMPLE` in `src/code.ts`) and the whole text highlighted once with
+    it: 1354 ms to 421 ms for the first paste, 1244 ms to 364 ms per edit after it. Short snippets are detected
+    exactly as before. Two unit tests: a long snippet is still coloured past the sample, and one with no detectable
+    language stays plain text with every character kept.
+  - **Dragging a blur or pixelate on a big image.** The redacted copy got a new full-size canvas every frame; it now
+    reuses the one it has for the same image. 4000 x 3000 image, unthrottled: 21.5 ms to 16 ms per redraw (a box
+    annotation drags at 2.4 ms; the rest is the blur itself).
+  - Sliders are 24 px tall instead of the native 16 px (WCAG 2.5.8 target size), in the same layout box.
+- Unchanged and fine, recorded as the baseline: JS 169 kB (60.5 kB gzip), CSS 23 kB (11.2 kB gzip), 5 requests and
+  125 kB transferred on first load; at 4x, first contentful paint about 96 ms, largest contentful paint about 380 ms,
+  total blocking time about 200 ms (mostly highlight.js compiling its 24 grammars for the first detection).
+
 ### Added
+
+- Round 8: **axe-core in CI.** An e2e test runs axe-core 4.14.0 (WCAG 2.0 to 2.2 A/AA plus best practices) at 1440 px
+  light and 390 px dark, in code mode and in screenshot mode with a label being edited, in all three engines in CI.
+  0 violations today; checked to fail (`page-has-heading-one`) with the page's `<h1>` turned into a `<div>`.
+  `axe-core` is a pinned dev dependency.
+
+### Removed
+
+- Round 8: `assets/logo.png` (234 kB, used nowhere; the app and favicon use the hand-written SVG mark).
 
 - Round 7 ("feature-2"): **recolour a placed annotation**. With the Pointer tool active, the colour swatches show the
   selected annotation's colour, and picking one (by mouse, or arrow keys inside the swatch group) recolours it, with
@@ -128,6 +155,12 @@ All notable changes to this project are documented here. The format follows
 
 ### Notes for the next person
 
+- Round 8 ("perf-a11y"): reported gaps re-checked. "axe is not in CI" was real and is fixed (see Added). Owner-only
+  settings are still owner-only. Safari and Firefox by hand: still not done; CI runs every e2e test, axe included, in
+  WebKit and Firefox. Also checked and fine, no change: no horizontal scroll at 390 px or at 640 x 450 (a 1280 px
+  window at 200% zoom); every focus stop in the first 60 Tab presses has a visible ring; annotation colour swatches
+  are 22 px but 6 px apart, which meets WCAG 2.5.8 by spacing. Not changed on purpose: startup TBT (~200 ms at 4x) is
+  highlight.js compiling grammars for the first auto-detection; lazy-loading it would delay the first card.
 - Round 7 ("feature-2"): picked the two roadmap items a newcomer hits first: a misplaced colour could only be fixed by
   deleting and redrawing, and sizes such as a DEV cover (1000 x 420) or a YouTube thumbnail had no preset. Not built:
   keyboard shortcuts for tools (Tab to the toolbar works), a swap-width-and-height button, remembering the custom size
