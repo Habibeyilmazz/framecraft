@@ -22,6 +22,9 @@ async function loadShot(page: Page) {
   await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
 }
 
+/** Wait until the preview has redrawn: the canvas updates on the next animation frame, not with the controls. */
+const drawn = (page: Page) => page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+
 /** Rough fingerprint of a region of the preview canvas (relative coordinates). */
 function regionStats(page: Page, r: [number, number, number, number]) {
   return page.evaluate(([x, y, w, h]) => {
@@ -86,6 +89,7 @@ test('frames a screenshot and redacts a region with pixelate', async ({ page }) 
   await page.getByRole('radio', { name: 'None', exact: true }).first().check(); // frame: none, so the canvas is the screenshot
   // the deploy key in the fixture sits around x 0.75-0.94, y 0.78-0.84 of the image
   const key: [number, number, number, number] = [0.76, 0.79, 0.17, 0.04];
+  await drawn(page);
   const before = await regionStats(page, key);
   await page.getByRole('radio', { name: 'Pixelate' }).check();
   const box = (await page.locator('#preview').boundingBox())!;
@@ -94,6 +98,7 @@ test('frames a screenshot and redacts a region with pixelate', async ({ page }) 
   await page.mouse.move(box.x + box.width * 0.97, box.y + box.height * 0.87, { steps: 4 });
   await page.mouse.up();
   await expect(page.getByText('Pixelate 1')).toBeVisible();
+  await drawn(page);
   const after = await regionStats(page, key);
   expect(after).toBeLessThan(before / 3);
 
@@ -123,7 +128,7 @@ test('annotations land where you draw on a tilted card', async ({ page }) => {
     }, [at.x - 6, at.y + 3]);
   await page.mouse.click(at.x, at.y);
   await expect(page.getByText('Step 1')).toBeVisible();
-  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await drawn(page);
   const [r, g, b] = await probe();
   // the badge is filled with the default red, so the clicked pixel turns red
   expect(r).toBeGreaterThan(200);
@@ -227,6 +232,7 @@ test('keyboard places a redaction that also wipes detail out of a tiny image', a
   await page.getByRole('radio', { name: 'None', exact: true }).first().check();
   await page.locator('#r-padding').fill('0');
   const centre: [number, number, number, number] = [0.4, 0.4, 0.2, 0.2];
+  await drawn(page);
   const before = await regionStats(page, centre);
   expect(before).toBeGreaterThan(100);
 
@@ -234,7 +240,7 @@ test('keyboard places a redaction that also wipes detail out of a tiny image', a
   await page.locator('#preview').focus();
   await page.keyboard.press('Enter');
   await expect(page.getByText('Pixelate 1')).toBeVisible();
-  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await drawn(page);
   // a ratio, not a count: on a 2x screen (WebKit's default device) the upscaled cells blend at their edges
   expect(await regionStats(page, centre)).toBeLessThan(before / 4);
 
@@ -274,6 +280,7 @@ test('the pointer drags any annotation, and the list picks which one the keyboar
   await page.mouse.up();
   await page.getByRole('radio', { name: 'Step', exact: true }).check();
   await page.mouse.click(...at(0.8, 0.2));
+  await drawn(page);
   expect(await red(0.2, 0.35)).toBeGreaterThan(5);
 
   // drag the box by its left edge; it is not the newest annotation
@@ -283,7 +290,7 @@ test('the pointer drags any annotation, and the list picks which one the keyboar
   await page.mouse.move(...at(0.5, 0.35), { steps: 6 });
   await page.mouse.up();
   await expect(page.getByRole('button', { name: 'Box 1', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await page.evaluate(() => new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(done))));
+  await drawn(page);
   expect(await red(0.2, 0.35)).toBe(0);
   expect(await red(0.5, 0.35)).toBeGreaterThan(5);
 
