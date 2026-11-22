@@ -26,6 +26,8 @@ All notable changes to this project are documented here. The format follows
   drawing and, if the canvas is tainted, refuses the file with "This browser cannot export an SVG with HTML inside
   it. Use a PNG of it instead." Firefox does not taint it, so there it loads and exports. The e2e test pins each
   engine's outcome and checks a loaded one exports. Real Safari was not tried by hand.
+- Round 15, not done: no aspect-ratio lock for the crop yet (still on the roadmap). Codex was out of quota again, so
+  the review was by hand. Real Safari and Firefox were not tried by hand; WebKit and Firefox ran in CI.
 - Round 14 ("launch"): checked the two reported gaps that were bugs first, each with an e2e test seen to fail
   before the fix:
   - **SVG files were refused as a screenshot** (or a background image): `createImageBitmap` does not decode them.
