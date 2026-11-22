@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- A made-up app UI, used only to produce a synthetic screenshot for tests and docs. -->
+<html><head><meta charset="utf-8"><style>
+*{box-sizing:border-box}body{margin:0;font:14px/1.4 system-ui,-apple-system,sans-serif;color:#1d2433;background:#f6f7fb;display:grid;grid-template-columns:210px 1fr;height:100vh}
+nav{background:#fff;border-right:1px solid #e4e7ef;padding:20px 14px}nav b{display:block;font-size:17px;margin:0 8px 22px}nav a{display:block;padding:8px 10px;border-radius:8px;color:#4a5568;text-decoration:none;margin-bottom:2px}nav a.on{background:#eef1ff;color:#3346d3;font-weight:600}
+main{padding:26px 30px}h1{font-size:22px;margin:0 0 4px}p.sub{color:#6b7385;margin:0 0 22px}
+.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}.card{background:#fff;border:1px solid #e4e7ef;border-radius:12px;padding:16px}.card small{color:#6b7385}.card strong{display:block;font-size:26px;margin-top:6px}
+.up{color:#15803d;font-size:12px;font-weight:600}.chart{height:120px;display:flex;align-items:flex-end;gap:7px;margin-top:10px}.chart i{flex:1;background:linear-gradient(#6f7cff,#3346d3);border-radius:4px 4px 0 0}
+table{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e4e7ef;border-radius:12px;overflow:hidden}td,th{text-align:left;padding:11px 14px;border-bottom:1px solid #eef0f5}th{color:#6b7385;font-weight:600;font-size:12px}
+.pill{padding:2px 8px;border-radius:99px;font-size:12px;font-weight:600}.ok{background:#dcfce7;color:#166534}.run{background:#e0e7ff;color:#3730a3}
+.key{margin-top:16px;background:#fff;border:1px solid #e4e7ef;border-radius:12px;padding:14px 16px;display:flex;justify-content:space-between;align-items:center}.key code{font:13px ui-monospace,Menlo,monospace;background:#f3f4f8;padding:6px 10px;border-radius:6px}
+</style></head><body>
+<nav><b>Orbit</b><a class="on" href="#">Deployments</a><a href="#">Projects</a><a href="#">Logs</a><a href="#">Settings</a></nav>
+<main><h1>Deployments</h1><p class="sub">Last 7 days across 4 projects</p>
+<div class="cards">
+<div class="card"><small>Builds</small><strong>248</strong><span class="up">+12% this week</span></div>
+<div class="card"><small>Median build time</small><strong>41 s</strong><span class="up">-6 s</span></div>
+<div class="card"><small>Builds per day</small><div class="chart"><i style="height:40%"></i><i style="height:62%"></i><i style="height:48%"></i><i style="height:80%"></i><i style="height:70%"></i><i style="height:95%"></i><i style="height:76%"></i></div></div>
+</div>
+<table><tr><th>Project</th><th>Branch</th><th>Status</th><th>Duration</th></tr>
+<tr><td>marketing-site</td><td>main</td><td><span class="pill ok">Ready</span></td><td>38 s</td></tr>
+<tr><td>api-gateway</td><td>feat/rate-limits</td><td><span class="pill run">Building</span></td><td>1 m 02 s</td></tr>
+<tr><td>docs</td><td>main</td><td><span class="pill ok">Ready</span></td><td>24 s</td></tr></table>
+<div class="key"><span>Deploy key</span><code>orbit_demo_9f2c7a1e5b8d4c3f</code></div>
+</main></body></html>

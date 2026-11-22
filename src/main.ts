@@ -496,15 +496,20 @@ function wire() {
   new ResizeObserver(scheduleDraw).observe(wrap);
 }
 
+/** Load the design from the URL hash, if there is one. Our own updates use replaceState, which fires no hashchange. */
+async function loadHash() {
+  const m = location.hash.match(/^#d=(.+)$/);
+  if (!m) return;
+  const decoded = await decodeDesign(m[1]);
+  if (decoded) design = decoded;
+  else toast('That link does not contain a framecraft design. Starting fresh.', true);
+}
+
 async function start() {
   fillOptions();
   wire();
-  const m = location.hash.match(/^#d=(.+)$/);
-  if (m) {
-    const decoded = await decodeDesign(m[1]);
-    if (decoded) design = decoded;
-    else toast('That link does not contain a framecraft design. Starting fresh.', true);
-  }
+  await loadHash();
+  window.addEventListener('hashchange', () => loadHash().then(() => commit()));
   design = sanitize(design);
   renderTemplates();
   syncControls();

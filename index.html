@@ -83,15 +83,15 @@
           <h2>Code</h2>
           <label class="field"><span>Snippet</span><textarea data-bind="code.text" rows="9" wrap="off" spellcheck="false" maxlength="20000" autocapitalize="off" autocomplete="off"></textarea></label>
           <div class="pair">
-            <label class="field"><span>Language</span><select data-bind="code.lang" id="lang"></select></label>
-            <label class="field"><span>Theme</span><select data-bind="code.theme" id="theme"></select></label>
+            <div class="field"><label for="lang">Language</label><select data-bind="code.lang" id="lang"></select></div>
+            <div class="field"><label for="theme">Theme</label><select data-bind="code.theme" id="theme"></select></div>
           </div>
           <p class="hint" id="detected" aria-live="polite"></p>
           <div class="pair">
             <label class="field"><span>Highlight lines</span><input type="text" data-bind="code.highlight" placeholder="e.g. 2, 4-6" maxlength="200" spellcheck="false" /></label>
             <label class="field"><span>File name</span><input type="text" data-bind="code.title" maxlength="120" spellcheck="false" /></label>
           </div>
-          <label class="field range"><span>Font size <output data-out="code.fontSize"></output></span><input type="range" min="10" max="32" step="1" data-bind="code.fontSize" /></label>
+          <div class="field range"><span><label for="r-code-fontSize">Font size</label><output for="r-code-fontSize" data-out="code.fontSize"></output></span><input id="r-code-fontSize" type="range" min="10" max="32" step="1" data-bind="code.fontSize" /></div>
           <div class="checks">
             <label class="check"><input type="checkbox" data-bind="code.lineNumbers" /> Line numbers</label>
             <label class="check"><input type="checkbox" data-bind="code.bar" /> Window bar</label>
@@ -113,14 +113,14 @@
           <button type="button" class="btn ghost wide" id="shuffle" data-show="bg.kind:mesh">Shuffle mesh</button>
           <label class="field color" data-show="bg.kind:solid,image"><span>Colour</span><input type="color" data-bind="bg.color" /></label>
           <button type="button" class="btn ghost wide" data-pick="bg" data-show="bg.kind:image">Choose background image</button>
-          <label class="field range" data-show="bg.kind:gradient,mesh,solid,image"><span>Grain <output data-out="bg.noise" data-pct></output></span><input type="range" min="0" max="1" step="0.05" data-bind="bg.noise" /></label>
+          <div class="field range" data-show="bg.kind:gradient,mesh,solid,image"><span><label for="r-bg-noise">Grain</label><output for="r-bg-noise" data-out="bg.noise" data-pct></output></span><input id="r-bg-noise" type="range" min="0" max="1" step="0.05" data-bind="bg.noise" /></div>
         </section>
 
         <section class="group">
           <h2>Layout</h2>
-          <label class="field"><span>Size</span><select data-bind="size" id="size"></select></label>
-          <label class="field range"><span>Padding <output data-out="padding"></output></span><input type="range" min="0" max="240" step="4" data-bind="padding" /></label>
-          <label class="field range" data-show="frame:none,browser,mac|mode:code"><span>Corner radius <output data-out="radius"></output></span><input type="range" min="0" max="48" step="1" data-bind="radius" /></label>
+          <div class="field"><label for="size">Size</label><select data-bind="size" id="size"></select></div>
+          <div class="field range"><span><label for="r-padding">Padding</label><output for="r-padding" data-out="padding"></output></span><input id="r-padding" type="range" min="0" max="240" step="4" data-bind="padding" /></div>
+          <div class="field range" data-show="frame:none,browser,mac|mode:code"><span><label for="r-radius">Corner radius</label><output for="r-radius" data-out="radius"></output></span><input id="r-radius" type="range" min="0" max="48" step="1" data-bind="radius" /></div>
           <fieldset class="seg wide">
             <legend>Shadow</legend>
             <label><input type="radio" name="shadow" value="none" data-bind="shadow" /><span>None</span></label>
@@ -128,8 +128,8 @@
             <label><input type="radio" name="shadow" value="medium" data-bind="shadow" /><span>Medium</span></label>
             <label><input type="radio" name="shadow" value="large" data-bind="shadow" /><span>Large</span></label>
           </fieldset>
-          <label class="field range"><span>Tilt forward <output data-out="tiltX" data-deg></output></span><input type="range" min="-30" max="30" step="1" data-bind="tiltX" /></label>
-          <label class="field range"><span>Turn sideways <output data-out="tiltY" data-deg></output></span><input type="range" min="-30" max="30" step="1" data-bind="tiltY" /></label>
+          <div class="field range"><span><label for="r-tiltX">Tilt forward</label><output for="r-tiltX" data-out="tiltX" data-deg></output></span><input id="r-tiltX" type="range" min="-30" max="30" step="1" data-bind="tiltX" /></div>
+          <div class="field range"><span><label for="r-tiltY">Turn sideways</label><output for="r-tiltY" data-out="tiltY" data-deg></output></span><input id="r-tiltY" type="range" min="-30" max="30" step="1" data-bind="tiltY" /></div>
           <button type="button" class="btn ghost wide" id="flatten">Reset tilt</button>
         </section>
 
@@ -144,7 +144,7 @@
               <label><input type="radio" name="caption.pos" value="bottom" data-bind="caption.pos" /><span>Bottom</span></label>
             </fieldset>
           </div>
-          <label class="field range"><span>Size <output data-out="caption.size"></output></span><input type="range" min="12" max="96" step="1" data-bind="caption.size" /></label>
+          <div class="field range"><span><label for="r-caption-size">Text size</label><output for="r-caption-size" data-out="caption.size"></output></span><input id="r-caption-size" type="range" min="12" max="96" step="1" data-bind="caption.size" /></div>
         </section>
 
         <section class="group">
