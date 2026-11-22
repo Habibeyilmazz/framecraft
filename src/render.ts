@@ -166,12 +166,12 @@ function drawWindowChrome(ctx: Ctx, d: Design, L: CardLayout) {
 let redactCache: { img: Img; key: string; out: Img } | null = null;
 
 /**
- * Bake blur and pixelate into a copy of the image, in image pixels. Each redaction samples the copy, so an
+ * Bake blur, pixelate and cover into a copy of the image, in image pixels. Each redaction samples the copy, so an
  * overlapping one can never bring back pixels an earlier one covered. Cells are at least 8 image px, so even
  * a tiny image loses its detail.
  */
 export function redact(img: Img, notes: Note[]): Img {
-  const marks = notes.filter((n) => n.t === 'blur' || n.t === 'pixel');
+  const marks = notes.filter((n) => n.t === 'blur' || n.t === 'pixel' || n.t === 'cover');
   if (!marks.length) return img;
   const key = JSON.stringify(marks);
   if (redactCache?.img === img && redactCache.key === key) return redactCache.out;
@@ -186,6 +186,12 @@ export function redact(img: Img, notes: Note[]): Img {
     const w = Math.ceil(n.w * img.width);
     const h = Math.ceil(n.h * img.height);
     if (w < 1 || h < 1) continue;
+    if (n.t === 'cover') {
+      // solid and opaque: unlike blur and pixelate, nothing of the text survives to be reconstructed
+      ctx.fillStyle = n.c;
+      ctx.fillRect(x, y, w, h);
+      continue;
+    }
     const blur = n.t === 'blur';
     const cell = Math.max(8, img.width / (blur ? 160 : 70));
     const tiny = document.createElement('canvas');

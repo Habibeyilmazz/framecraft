@@ -200,6 +200,9 @@ textarea {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
+.tools svg .solid {
+  fill: currentColor;
+}
 
 /* ---------- segmented radio groups ---------- */
 

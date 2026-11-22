@@ -45,6 +45,11 @@ describe('sanitize', () => {
     expect(d.notes[1]).toMatchObject({ t: 'step', n: 99 });
   });
 
+  it('keeps solid cover redactions from a shared link, with a valid colour', () => {
+    const [n] = sanitize({ notes: [{ t: 'cover', x: 0.2, y: 0.3, w: 0.4, h: 0.1, c: 'url(javascript:x)' }] }).notes;
+    expect(n).toMatchObject({ t: 'cover', x: 0.2, y: 0.3, w: 0.4, h: 0.1, c: '#ff4d3d' });
+  });
+
   it('does not keep unknown keys', () => {
     const d = sanitize({ evil: '<script>', bg: { onload: 1 } }) as unknown as Record<string, unknown>;
     expect(d.evil).toBeUndefined();
@@ -136,7 +141,7 @@ describe('moveNote', () => {
   });
 
   it('puts the resize handle on the point that resizing moves', () => {
-    for (const t of ['arrow', 'box', 'blur', 'pixel'] as const) {
+    for (const t of ['arrow', 'box', 'blur', 'pixel', 'cover'] as const) {
       const n = note(t);
       const [hx, hy] = handleOf(n)!;
       moveNote(n, 0.05, 0.1, true);
@@ -175,6 +180,7 @@ describe('hitNote', () => {
 
   it('grabs redactions anywhere inside', () => {
     expect(hit([note({ t: 'pixel', x: 0.1, y: 0.1, w: 0.4, h: 0.4 })], 300, 150)).toBe(0);
+    expect(hit([note({ t: 'cover', x: 0.1, y: 0.1, w: 0.4, h: 0.4 })], 300, 150)).toBe(0);
   });
 
   it('measures arrows in real pixels, whatever the aspect ratio', () => {

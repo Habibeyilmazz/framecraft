@@ -37,8 +37,35 @@ function regionStats(page: Page, r: [number, number, number, number]) {
 }
 
 test.beforeEach(async ({ page }) => {
+  // record Content-Security-Policy violations, so every test also checks the policy does not break the app
+  await page.addInitScript(() => {
+    const w = window as unknown as { cspViolations: string[] };
+    w.cspViolations = [];
+    document.addEventListener('securitypolicyviolation', (e) => w.cspViolations.push(`${e.effectiveDirective} ${e.blockedURI}`));
+  });
   await page.goto('/');
   await expect(page.locator('#preview')).toBeVisible();
+});
+
+test.afterEach(async ({ page }) => {
+  expect(await page.evaluate(() => (window as unknown as { cspViolations: string[] }).cspViolations)).toEqual([]);
+});
+
+test('ships a strict Content-Security-Policy that blocks injected scripts', async ({ page }) => {
+  const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+  expect(csp).toContain("script-src 'self'");
+  expect(csp).not.toContain('unsafe-inline');
+  const ran = await page.evaluate(async () => {
+    const w = window as unknown as { cspViolations: string[]; injected?: boolean };
+    const div = document.createElement('div');
+    div.innerHTML = '<img src="x" onerror="window.injected = true">';
+    document.body.append(div);
+    await new Promise((done) => setTimeout(done, 200));
+    div.remove();
+    const blocked = w.cspViolations.splice(0).some((v) => v.startsWith('script-src'));
+    return { injected: !!w.injected, blocked };
+  });
+  expect(ran).toEqual({ injected: false, blocked: true });
 });
 
 test('opens on a highlighted code card and detects the language', async ({ page }) => {
@@ -110,6 +137,31 @@ test('frames a screenshot and redacts a region with pixelate', async ({ page }) 
   await expect(page.getByText('Step 2')).toHaveCount(0);
   await page.getByRole('button', { name: 'Remove Pixelate 1' }).click();
   await expect(page.getByText('Pixelate 1')).toHaveCount(0);
+});
+
+test('cover hides a secret under one solid colour', async ({ page }) => {
+  await page.getByLabel('Padding').fill('0');
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'None', exact: true }).first().check();
+  const key: [number, number, number, number] = [0.76, 0.79, 0.17, 0.04];
+  await drawn(page);
+  expect(await regionStats(page, key)).toBeGreaterThan(10);
+  await page.getByRole('radio', { name: 'Cover' }).check();
+  await page.getByRole('radio', { name: 'Colour #111111' }).check();
+  const box = (await page.locator('#preview').boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.72, box.y + box.height * 0.76);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.97, box.y + box.height * 0.87, { steps: 4 });
+  await page.mouse.up();
+  await expect(page.getByText('Cover 1')).toBeVisible();
+  await drawn(page);
+  // pixelate and blur keep a few shades per cell; a cover leaves exactly one
+  expect(await regionStats(page, key)).toBe(1);
+  const [r, g, b] = await page.evaluate(([x, y]) => {
+    const c = document.querySelector<HTMLCanvasElement>('#preview')!;
+    return [...c.getContext('2d')!.getImageData(x * c.width, y * c.height, 1, 1).data];
+  }, [0.85, 0.81]);
+  expect([r, g, b]).toEqual([0x11, 0x11, 0x11]);
 });
 
 test('annotations land where you draw on a tilted card', async ({ page }) => {

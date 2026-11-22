@@ -127,7 +127,7 @@ function renderNotesList() {
   const host = $('#notes-list');
   host.replaceChildren();
   if (design.mode !== 'shot' || !design.notes.length) return;
-  const names: Record<NoteKind, string> = { arrow: 'Arrow', box: 'Box', blur: 'Blur', pixel: 'Pixelate', step: 'Step' };
+  const names: Record<NoteKind, string> = { arrow: 'Arrow', box: 'Box', blur: 'Blur', pixel: 'Pixelate', cover: 'Cover', step: 'Step' };
   const head = document.createElement('div');
   head.className = 'notes-head';
   head.innerHTML = `<span>Annotations</span><button type="button" class="link-btn">Remove all</button>`;

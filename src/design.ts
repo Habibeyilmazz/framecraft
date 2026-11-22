@@ -6,7 +6,7 @@ export const FRAMES = ['none', 'browser', 'mac', 'phone'] as const;
 export const BG_KINDS = ['gradient', 'mesh', 'solid', 'image', 'none'] as const;
 export const SHADOWS = ['none', 'soft', 'medium', 'large'] as const;
 export const SIZES = ['auto', 'github', 'readme', 'x', 'linkedin', 'og', 'square'] as const;
-export const NOTE_KINDS = ['arrow', 'box', 'blur', 'pixel', 'step'] as const;
+export const NOTE_KINDS = ['arrow', 'box', 'blur', 'pixel', 'cover', 'step'] as const;
 export const CAPTION_POS = ['bottom', 'top'] as const;
 export const THEMES = ['framecraft', 'one-dark', 'dracula', 'nord', 'github-dark', 'github-light', 'solarized-light'] as const;
 

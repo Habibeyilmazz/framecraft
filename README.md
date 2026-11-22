@@ -29,9 +29,12 @@ npm run dev        # then open http://localhost:4210
 
 - Drop an image on the page, paste it with Ctrl+V / ⌘V, or pick a file (PNG, JPEG, WebP, GIF, AVIF).
 - Frames: none, browser window (with an editable address), macOS window (with a title), phone. Light or dark windows.
-- Annotations: arrows, boxes, numbered step badges, blur and pixelate. Blur and pixelate rebuild the region from a tiny
-  downscaled copy (cells of at least 8 image pixels) and clear the original pixels first, so the exported file does not
-  contain what you covered, and overlapping redactions never bring covered pixels back.
+- Annotations: arrows, boxes, numbered step badges, and three redactions: blur, pixelate and cover. Blur and pixelate
+  rebuild the region from a tiny downscaled copy (cells of at least 8 image pixels) and clear the original pixels
+  first, so the exported file does not contain what you covered, and overlapping redactions never bring covered
+  pixels back. Cover paints the region one solid colour.
+- **For passwords, keys and tokens use Cover.** Blurred or pixelated text keeps a coarse shape, and tools such as
+  Depix have recovered short pixelated strings in a known font. A solid fill leaves nothing to reconstruct.
   Every annotation is listed in the sidebar with a Remove button; Ctrl+Z / ⌘Z undoes the last one.
 - With the Pointer tool, drag any annotation to move it (grab a box by its outline, a redaction anywhere inside).
   The selected annotation shows a round handle (an arrow's tip, a box's bottom-right corner): drag it to resize.
