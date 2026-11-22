@@ -242,6 +242,38 @@ test('rejects a file that is not an image', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Add a screenshot' })).toBeVisible();
 });
 
+test('an SVG file works as a screenshot, with or without a width and height', async ({ page }) => {
+  const svg = (size: string) =>
+    Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" ${size}><rect width="640" height="360" fill="#e01010"/>` +
+        `<script>document.title="ran"</script><image href="https://example.com/x.png" width="10" height="10"/></svg>`,
+    );
+  await page.getByRole('radio', { name: 'Screenshot', exact: true }).check();
+  for (const size of ['width="640" height="360" viewBox="0 0 640 360"', 'viewBox="0 0 640 360"']) {
+    await page.setInputFiles('#file', { name: 'diagram.svg', mimeType: 'image/svg+xml', buffer: svg(size) });
+    await expect(page.getByRole('toolbar', { name: 'Annotation tools' })).toBeVisible();
+    await drawn(page);
+    // the middle of the preview is the SVG's red
+    const [r, g, b] = await page.evaluate(() => {
+      const c = document.querySelector<HTMLCanvasElement>('#preview')!;
+      return [...c.getContext('2d')!.getImageData(c.width / 2, c.height / 2, 1, 1).data];
+    });
+    expect([r > 180, g < 60, b < 60]).toEqual([true, true, true]);
+    // drawn 2000 px on the long side in the SVG's own shape, sized or not: the crop readout names the image size
+    await expect(page.locator('#crop-info')).toBeHidden();
+    await page.getByRole('radio', { name: 'Crop', exact: true }).check();
+    await page.locator('#preview').focus();
+    await page.keyboard.press('Alt+ArrowLeft');
+    await expect(page.locator('#crop-info')).toHaveText(/ of 2000 × 112[45] px\.$/);
+    // the canvas is not tainted, so a PNG still exports
+    const dl = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Download PNG' }).click();
+    expect(pngSize(await readFile((await (await dl).path())!)).w).toBeGreaterThan(0);
+    await page.getByRole('radio', { name: 'Pointer', exact: true }).check();
+  }
+  expect(await page.title()).not.toBe('ran');
+});
+
 test('pasting an image switches to screenshot mode', async ({ page, browserName }) => {
   test.skip(browserName === 'firefox', 'Firefox drops clipboardData from a synthetic paste event');
   const b64 = (await readFile(SAMPLE)).toString('base64');
@@ -957,6 +989,24 @@ test('the pointer cannot drag an annotation, or its handle, out of the crop', as
   expect(n.x).toBeCloseTo(b.x, 2);
   expect(n.y).toBeCloseTo(c.y, 2);
   expect(n.y + n.h).toBeCloseTo(c.y + c.h, 2);
+});
+
+test('arrow keys stop an annotation, and its handle, at the crop edge', async ({ page }) => {
+  await loadShot(page);
+  await page.getByRole('radio', { name: 'Crop', exact: true }).check();
+  await page.locator('#preview').focus();
+  // the crop becomes the right three quarters of the image
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+Alt+ArrowLeft');
+  for (let i = 0; i < 5; i++) await page.keyboard.press('Shift+ArrowRight');
+  await expect.poll(async () => (await linkDesign(page)).crop.x).toBeCloseTo(0.25, 2);
+  const c = (await linkDesign(page)).crop;
+  await page.getByRole('radio', { name: 'Box', exact: true }).check();
+  await page.locator('#preview').focus();
+  await page.keyboard.press('Enter');
+  for (let i = 0; i < 30; i++) await page.keyboard.press('Shift+ArrowLeft');
+  await expect.poll(async () => (await linkNotes(page))[0]?.x).toBeCloseTo(c.x, 3);
+  for (let i = 0; i < 30; i++) await page.keyboard.press('Shift+Alt+ArrowRight');
+  await expect.poll(async () => (await linkNotes(page))[0]?.w).toBeCloseTo(c.w, 3);
 });
 
 test('a label placed at the edge of the crop stays inside it, and keeps inside as its words grow', async ({ page }) => {

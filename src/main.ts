@@ -329,9 +329,31 @@ function onInput(e: Event) {
 // ---------- images ----------
 
 const MAX_BYTES = 40 * 1024 * 1024;
+
+/** Long side, in px, an SVG is drawn at: a vector has no real pixel size, and this stays sharp on a 2x export. */
+const SVG_PX = 2000;
+
+/** createImageBitmap refuses SVG files, so decode through an <img>, where an SVG runs no scripts and loads nothing. */
+async function decodeSvg(file: File): Promise<ImageBitmap> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    // an SVG with only a viewBox gets the browser's default size in its own shape (or none, then 300 x 150)
+    const [w, h] = [img.naturalWidth || 300, img.naturalHeight || 150];
+    const k = SVG_PX / Math.max(w, h);
+    const c = document.createElement('canvas');
+    [c.width, c.height] = [Math.max(1, Math.round(w * k)), Math.max(1, Math.round(h * k))];
+    c.getContext('2d')!.drawImage(img, 0, 0, c.width, c.height);
+    return await createImageBitmap(c);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 async function loadImage(file: File): Promise<Img | null> {
   if (!file.type.startsWith('image/')) {
-    toast(`${file.name || 'That file'} is not an image. Use PNG, JPEG, WebP, GIF or AVIF.`, true);
+    toast(`${file.name || 'That file'} is not an image. Use PNG, JPEG, WebP, GIF, AVIF or SVG.`, true);
     return null;
   }
   if (file.size > MAX_BYTES) {
@@ -339,7 +361,7 @@ async function loadImage(file: File): Promise<Img | null> {
     return null;
   }
   try {
-    const bmp = await createImageBitmap(file);
+    const bmp = file.type === 'image/svg+xml' ? await decodeSvg(file) : await createImageBitmap(file);
     if (bmp.width > 12000 || bmp.height > 12000 || bmp.width * bmp.height > 50_000_000) {
       toast('That image is over 12000 px on a side or 50 megapixels. Use a smaller file.', true);
       return null;
@@ -642,8 +664,11 @@ canvas.addEventListener('keydown', (e) => {
   if (!DIRS[e.key]) return;
   e.preventDefault();
   const step = e.shiftKey ? 0.05 : 0.01;
-  const [dx, dy] = [DIRS[e.key][0] * step * cw, DIRS[e.key][1] * step * ch];
-  commit(() => moveNote(note, dx, dy, e.altKey));
+  // like a Pointer drag, the annotation's corner (or its handle) stops at the crop's edge; one outside can come back
+  const at = (e.altKey && handleOf(note)) || [note.x, note.y];
+  const to: [number, number] = [at[0] + DIRS[e.key][0] * step * cw, at[1] + DIRS[e.key][1] * step * ch];
+  const [tx, ty] = inCrop(at) ? intoCrop(to) : to;
+  commit(() => moveNote(note, tx - at[0], ty - at[1], e.altKey));
 });
 
 function undoNote() {
